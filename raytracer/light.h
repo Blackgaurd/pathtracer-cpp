@@ -16,6 +16,7 @@ struct light_t {
     virtual ~light_t() = default;
     virtual vec3 absolute_dir(const vec3& p) const = 0;
     virtual vec3 random_dir(const vec3& p) const = 0;
+    virtual float distance(const vec3& p) const = 0;
 };
 
 struct dir_light_t : public light_t {
@@ -29,6 +30,9 @@ struct dir_light_t : public light_t {
     }
     vec3 absolute_dir(const vec3& p) const override {
         return -dir;
+    }
+    float distance(const vec3& p) const override {
+        return 1;  // to not mess with attenuation
     }
 };
 
@@ -56,5 +60,8 @@ struct point_light_t : public light_t {
 
         vec3 new_point = pos + tangent * radius_ * std::cos(angle) + bitangent * radius_ * std::sin(angle);
         return (new_point - p).normalize();
+    }
+    float distance(const vec3& p) const override {
+        return (pos - p).length();
     }
 };

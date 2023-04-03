@@ -14,7 +14,9 @@
 #include "object.h"
 
 #define BIAS 1e-4
-#define SHADOW_SAMPLES 64
+#define SHADOW_SAMPLES 16
+//#define ATTENUATION
+#define ATTENUATION_EXPONENT 0.3
 
 vec3 raycast(const vec3& ray_d, const vec3& ray_o, const std::vector<std::shared_ptr<object_t>>& objects, const std::vector<std::shared_ptr<light_t>>& lights, const vec3& bg_color) {
     // check intersections
@@ -69,7 +71,14 @@ vec3 raycast(const vec3& ray_d, const vec3& ray_o, const std::vector<std::shared
             shadow_intensity = 1.0f;
         }
 
-        color += closest_object->color * light->color * light->intensity * std::max(0.0f, normal.dot(light_dir)) / M_PI * shadow_intensity;
+#ifdef ATTENUATION
+        float distance = light->distance(hit);
+        float attenuation = light->intensity / std::pow(distance, ATTENUATION_EXPONENT);
+        attenuation = std::min(1.0f, attenuation);
+#else
+        float attenuation = light->intensity;
+#endif
+        color += closest_object->color * light->color * attenuation * std::max(0.0f, normal.dot(light_dir)) / M_PI * shadow_intensity;
     }
     return color;
 }
