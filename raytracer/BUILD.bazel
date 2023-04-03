@@ -1,0 +1,35 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "linalg",
+    hdrs = ["linalg.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "image",
+    hdrs = ["image.h"],
+    deps = [":linalg", "//fpng:fpng"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "light",
+    hdrs = ["light.h"],
+    deps = [":linalg"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "object",
+    hdrs = ["object.h"],
+    deps = [":linalg"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "render",
+    hdrs = ["render.h"],
+    deps = [":linalg", ":image", ":object"],
+    visibility = ["//visibility:public"],
+)

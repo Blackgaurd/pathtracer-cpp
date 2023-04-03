@@ -1,0 +1,9 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+cc_library(
+    name = "fpng",
+    srcs = ["fpng.cc"],
+    hdrs = ["fpng.h"],
+    copts = ["-DFPNG_NO_SSE", "-w"],
+    visibility = ["//visibility:public"],
+)

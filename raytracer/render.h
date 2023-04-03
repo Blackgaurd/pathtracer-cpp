@@ -1,0 +1,58 @@
+#pragma once
+
+#include <stdio.h>
+
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <utility>
+#include <vector>
+#include <memory>
+
+#include "image.h"
+#include "linalg.h"
+#include "object.h"
+
+vec3 raycast(const vec3& ray_d, const vec3& ray_o, const std::vector<std::shared_ptr<object_t>>& objects, const vec3& bg_color) {
+    float t = std::numeric_limits<float>::max() / 2;
+    std::shared_ptr<object_t> closest_object = nullptr;
+    for (auto& object : objects) {
+        float t_candidate;
+        if (object->intersect(ray_o, ray_d, t_candidate) && t_candidate < t) {
+            t = t_candidate;
+            closest_object = object;
+        }
+    }
+    //return bg_color;
+    if (closest_object == nullptr) return bg_color;
+    return closest_object->color;
+}
+void render(float fov_rad, const vec3& look_from, const vec3& look_at, const vec3& up, float image_distance, const vec3& bg_color, const std::vector<std::shared_ptr<object_t>>& objects, image_t& image) {
+    std::pair<int, int> res = {image.height, image.width};
+
+#define height first
+#define width second
+    std::pair<float, float> v_res = {
+        2.0 * image_distance * std::tan(fov_rad / 2) * static_cast<float>(res.height) / res.width,
+        2.0 * image_distance * std::tan(fov_rad / 2)};
+    float cell_width = v_res.width / res.width;
+
+    mat4 camera = mat4_constructors::camera(look_from, look_at, up);
+    for (int h = 0; h < res.height; h++) {
+        for (int w = 0; w < res.width; w++) {
+            vec3 ray_d = {
+                w * cell_width - v_res.width / 2 + cell_width / 2,
+                h * cell_width - v_res.height / 2 + cell_width / 2,
+                -image_distance};
+            ray_d = camera.transform_dir(ray_d).normalize();
+
+            // abs
+            vec3 color = raycast(ray_d, look_from, objects, bg_color);
+            //std::cout << color << std::endl;
+            image.set_pixel(w, h, color);
+            //break;
+        }
+    }
+#undef height
+#undef width
+}

@@ -1,0 +1,33 @@
+# Bazel
+/bazel-*
+/bazel-*/**/*
+/bazel-out/
+/bazel-bin/
+/bazel-genfiles/
+/bazel-testlogs/
+/.bazelrc
+/.bazelversion
+
+# Visual Studio Code
+.vscode/
+*.vscode/
+*.vscodeignore
+.vscodeignore
+
+# C++
+*.o
+*.obj
+*.exe
+*.dll
+*.d
+*.log
+*.ilk
+*.pdb
+*.manifest
+*.sbr
+*.gcno
+*.gcda
+
+# Miscellaneous
+.DS_Store
+Thumbs.db
