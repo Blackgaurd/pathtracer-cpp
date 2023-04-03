@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cassert>
-#include <vector>
 #include <fstream>
+#include <vector>
 
 #include "fpng/fpng.h"
 #include "linalg.h"
@@ -38,7 +38,8 @@ struct image_t {
     }
     void write_ppm(std::string filename) {
         std::ofstream out(filename);
-        out << "P6\n" << width << " " << height << "\n255\n";
+        out << "P6\n"
+            << width << " " << height << "\n255\n";
         for (int h = 0; h < height; h++) {
             for (int w = 0; w < width; w++) {
                 out << static_cast<unsigned char>(clamp(pixels[height - h - 1][w].x, 0, 1) * 255);
