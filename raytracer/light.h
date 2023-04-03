@@ -20,3 +20,16 @@ struct dir_light_t : public light_t {
     }
     vec3 get_direction(const vec3& p) const override { return -dir; }
 };
+
+// todo: point light using light attenuation and inverse square law
+struct point_light_t : public light_t {
+    vec3 pos;
+    float radius;
+
+    point_light_t() = default;
+    point_light_t(const vec3& pos, float radius, const vec3& color, float intensity) : pos(pos), radius(radius) {
+        this->color = color;
+        this->intensity = intensity;
+    }
+    vec3 get_direction(const vec3& p) const override { return (pos - p).normalize(); }
+};
