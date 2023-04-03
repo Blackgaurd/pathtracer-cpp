@@ -12,13 +12,15 @@ int main() {
     image_t out_image(600, 480);
 
     std::vector<std::shared_ptr<object_t>> objects;
-    vec3 red = {1, 0, 0}, blue = {0, 0, 1}, green = {0, 1, 0}, yellow = {1, 1, 0};
-    objects.push_back(std::make_shared<sphere_t>(sphere_t({-2, -2, -5}, 1, red)));
-    objects.push_back(std::make_shared<sphere_t>(sphere_t({2, -2, -5}, 1, blue)));
-    objects.push_back(std::make_shared<sphere_t>(sphere_t({2, 2, -5}, 1, yellow)));
-    objects.push_back(std::make_shared<sphere_t>(sphere_t({-2, 2, -5}, 1, green)));
+    objects.push_back(std::make_shared<sphere_t>(sphere_t({-2, -2, -5}, 1, color::red)));
+    objects.push_back(std::make_shared<sphere_t>(sphere_t({2, -2, -5}, 1, color::blue)));
+    objects.push_back(std::make_shared<sphere_t>(sphere_t({2, 2, -5}, 1, color::yellow)));
+    objects.push_back(std::make_shared<sphere_t>(sphere_t({-2, 2, -5}, 1, color::green)));
 
-    render(70 * M_PI / 180, {0, 0, 0}, {0, 0, -1}, {0, 1, 0}, 1, {0.8, 0.8, 0.8}, objects, out_image);
-    out_image.write_png("out.png");
-    out_image.write_ppm("out.ppm");
+    std::vector<std::shared_ptr<light_t>> lights;
+    lights.push_back(std::make_shared<dir_light_t>(dir_light_t({0, 0, -1}, color::white, 1)));
+
+    render(70 * M_PI / 180, {0, 0, 0}, {0, 0, -1}, {0, 1, 0}, 1, {0.8, 0.8, 0.8}, objects, lights, out_image);
+    out_image.write_png("output/out.png");
+    out_image.write_ppm("output/out.ppm");
 }

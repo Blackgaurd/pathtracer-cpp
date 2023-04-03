@@ -87,6 +87,16 @@ struct vec3 {
         return os << "(" << v.x << ", " << v.y << ", " << v.z << ")";
     }
 };
+namespace color {
+#define color_def(name, r, g, b) const vec3 name(r, g, b);
+color_def(white, 1, 1, 1);
+color_def(black, 0, 0, 0);
+color_def(red, 1, 0, 0);
+color_def(green, 0, 1, 0);
+color_def(blue, 0, 0, 1);
+color_def(yellow, 1, 1, 0);
+#undef color_def
+}  // namespace color
 struct mat4 {
     std::array<std::array<float, 4>, 4> arr;
 

@@ -12,8 +12,12 @@
 #include "image.h"
 #include "linalg.h"
 #include "object.h"
+#include "light.h"
 
-vec3 raycast(const vec3& ray_d, const vec3& ray_o, const std::vector<std::shared_ptr<object_t>>& objects, const vec3& bg_color) {
+#define BIAS 1e-4
+
+vec3 raycast(const vec3& ray_d, const vec3& ray_o, const std::vector<std::shared_ptr<object_t>>& objects, const std::vector<std::shared_ptr<light_t>>& lights, const vec3& bg_color) {
+    // check intersections
     float t = std::numeric_limits<float>::max() / 2;
     std::shared_ptr<object_t> closest_object = nullptr;
     for (auto& object : objects) {
@@ -23,11 +27,21 @@ vec3 raycast(const vec3& ray_d, const vec3& ray_o, const std::vector<std::shared
             closest_object = object;
         }
     }
-    //return bg_color;
     if (closest_object == nullptr) return bg_color;
-    return closest_object->color;
+
+    // do lighting
+    vec3 hit = ray_o + ray_d * t;
+    vec3 normal = closest_object->normal(hit);
+    vec3 bias = normal * BIAS;
+
+    vec3 color = {0, 0, 0};
+    for (auto& light: lights) {
+        vec3 light_dir = light->get_direction(hit);
+        color += closest_object->color * light->color * light->intensity * std::max(0.0f, normal.dot(light_dir)) / M_PI;
+    }
+    return color;
 }
-void render(float fov_rad, const vec3& look_from, const vec3& look_at, const vec3& up, float image_distance, const vec3& bg_color, const std::vector<std::shared_ptr<object_t>>& objects, image_t& image) {
+void render(float fov_rad, const vec3& look_from, const vec3& look_at, const vec3& up, float image_distance, const vec3& bg_color, const std::vector<std::shared_ptr<object_t>>& objects, const std::vector<std::shared_ptr<light_t>>& lights, image_t& image) {
     std::pair<int, int> res = {image.height, image.width};
 
 #define height first
@@ -47,7 +61,7 @@ void render(float fov_rad, const vec3& look_from, const vec3& look_at, const vec
             ray_d = camera.transform_dir(ray_d).normalize();
 
             // abs
-            vec3 color = raycast(ray_d, look_from, objects, bg_color);
+            vec3 color = raycast(ray_d, look_from, objects, lights, bg_color);
             //std::cout << color << std::endl;
             image.set_pixel(w, h, color);
             //break;
