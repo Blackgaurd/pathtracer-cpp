@@ -1,12 +1,9 @@
 #pragma once
 
 #include <cmath>
-#include <random>
 
 #include "linalg.h"
-
-std::mt19937 rng;
-std::uniform_real_distribution<float> dist(0, 1);
+#include "rng.h"
 
 struct light_t {
     vec3 color;
@@ -36,7 +33,6 @@ struct dir_light_t : public light_t {
     }
 };
 
-// todo: point light using light attenuation and inverse square law
 struct point_light_t : public light_t {
     vec3 pos;
     float radius;
@@ -51,15 +47,10 @@ struct point_light_t : public light_t {
         return (pos - p).normalize();
     }
     vec3 random_dir(const vec3& p) const override {
-        float angle = dist(rng) * 2 * M_PI;
-        float radius_ = std::sqrt(dist(rng)) * radius;
-
-        vec3 pos_dir = (pos - p).normalize();  // direction from point to light
-        vec3 tangent = pos_dir.cross({0, 1, 0}).normalize();
-        vec3 bitangent = tangent.cross(pos_dir).normalize();
-
-        vec3 new_point = pos + tangent * radius_ * std::cos(angle) + bitangent * radius_ * std::sin(angle);
-        return (new_point - p).normalize();
+        // get a random point in a sphere
+        vec3 rand_point = vec3(rng.rand01(), rng.rand01(), rng.rand01()).normalize();
+        vec3 sphere_point = rand_point * radius * pow(rng.rand01(), 1.0f / 3.0f);
+        return (sphere_point + pos - p).normalize();
     }
     float distance(const vec3& p) const override {
         return (pos - p).length();
