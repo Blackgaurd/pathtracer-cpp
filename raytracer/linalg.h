@@ -25,27 +25,25 @@ struct vec3 {
     vec3(float v) : x(v), y(v), z(v) {}
     vec3(float x, float y, float z) : x(x), y(y), z(z) {}
 
-#define vec3_op(op)                                   \
-    vec3 operator op(const vec3& o) const {           \
-        return vec3(x op o.x, y op o.y, z op o.z);    \
-    }                                                 \
-    vec3& operator op##=(const vec3& o) {             \
-        x op## = o.x;                                 \
-        y op## = o.y;                                 \
-        z op## = o.z;                                 \
-        return *this;                                 \
-    }                                                 \
-    vec3 operator op(float o) const {                 \
-        return vec3(x op o, y op o, z op o);          \
-    }                                                 \
-    vec3& operator op##=(float o) {                   \
-        x op## = o;                                   \
-        y op## = o;                                   \
-        z op## = o;                                   \
-        return *this;                                 \
-    }                                                 \
-    friend vec3 operator op(float o, const vec3& v) { \
-        return vec3(o op v.x, o op v.y, o op v.z);    \
+#define vec3_op(op)                                                          \
+    vec3 operator op(const vec3& o) const {                                  \
+        return vec3(x op o.x, y op o.y, z op o.z);                           \
+    }                                                                        \
+    vec3& operator op##=(const vec3& o) {                                    \
+        x op## = o.x;                                                        \
+        y op## = o.y;                                                        \
+        z op## = o.z;                                                        \
+        return *this;                                                        \
+    }                                                                        \
+    vec3 operator op(float o) const { return vec3(x op o, y op o, z op o); } \
+    vec3& operator op##=(float o) {                                          \
+        x op## = o;                                                          \
+        y op## = o;                                                          \
+        z op## = o;                                                          \
+        return *this;                                                        \
+    }                                                                        \
+    friend vec3 operator op(float o, const vec3& v) {                        \
+        return vec3(o op v.x, o op v.y, o op v.z);                           \
     }
 
     vec3_op(+);
@@ -118,15 +116,13 @@ struct mat4 {
 
     vec3 transform_dir(const vec3& v) const {
 #ifdef ROW_MAJOR
-        return vec3(
-            v.dot({arr[0][0], arr[1][0], arr[2][0]}),
-            v.dot({arr[0][1], arr[1][1], arr[2][1]}),
-            v.dot({arr[0][2], arr[1][2], arr[2][2]}));
+        return vec3(v.dot({arr[0][0], arr[1][0], arr[2][0]}),
+                    v.dot({arr[0][1], arr[1][1], arr[2][1]}),
+                    v.dot({arr[0][2], arr[1][2], arr[2][2]}));
 #else
-        return vec3(
-            v.dot({arr[0][0], arr[0][1], arr[0][2]}),
-            v.dot({arr[1][0], arr[1][1], arr[1][2]}),
-            v.dot({arr[2][0], arr[2][1], arr[2][2]}));
+        return vec3(v.dot({arr[0][0], arr[0][1], arr[0][2]}),
+                    v.dot({arr[1][0], arr[1][1], arr[1][2]}),
+                    v.dot({arr[2][0], arr[2][1], arr[2][2]}));
 #endif
     }
 
