@@ -2,19 +2,19 @@
 
 #include "linalg.h"
 
-struct object_t {
+struct Object {
     vec3 color;
-    virtual ~object_t() = default;
+    virtual ~Object() = default;
     virtual bool intersect(const vec3& ray_o, const vec3& ray_d, float& t) const = 0;
     virtual vec3 normal(const vec3& p) const = 0;
 };
 
-struct sphere_t : public object_t {
+struct Sphere : public Object {
     vec3 center;
     float radius;
 
-    sphere_t() = default;
-    sphere_t(const vec3& center, float radius, const vec3& color) : center(center), radius(radius) {
+    Sphere() = default;
+    Sphere(const vec3& center, float radius, const vec3& color) : center(center), radius(radius) {
         this->color = color;
     }
 

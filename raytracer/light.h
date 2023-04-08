@@ -5,22 +5,22 @@
 #include "linalg.h"
 #include "rng.h"
 
-struct light_t {
+struct Light {
     vec3 color;
     float intensity;
     bool soft_shadows;
 
-    virtual ~light_t() = default;
+    virtual ~Light() = default;
     virtual vec3 absolute_dir(const vec3& p) const = 0;
     virtual vec3 random_dir(const vec3& p) const = 0;
     virtual float distance(const vec3& p) const = 0;
 };
 
-struct dir_light_t : public light_t {
+struct DirLight : public Light {
     vec3 dir;
 
-    dir_light_t() = default;
-    dir_light_t(const vec3& dir, const vec3& color, float intensity)
+    DirLight() = default;
+    DirLight(const vec3& dir, const vec3& color, float intensity)
         : dir(dir) {
         this->color = color;
         this->intensity = intensity;
@@ -34,12 +34,12 @@ struct dir_light_t : public light_t {
     }
 };
 
-struct point_light_t : public light_t {
+struct PointLight : public Light {
     vec3 pos;
     float radius;
 
-    point_light_t() = default;
-    point_light_t(const vec3& pos,
+    PointLight() = default;
+    PointLight(const vec3& pos,
                   float radius,
                   const vec3& color,
                   float intensity)

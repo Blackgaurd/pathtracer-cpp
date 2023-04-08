@@ -29,12 +29,12 @@ vec3 hemisphere_sample(const vec3& normal) {
                    std::cos(theta) * std::sin(phi), std::sin(theta)};
     return sample.dot(normal) < 0 ? -sample : sample;
 }
-std::shared_ptr<object_t> intersect(
+std::shared_ptr<Object> intersect(
     const vec3& ray_d, const vec3& ray_o,
-    const std::vector<std::shared_ptr<object_t>>& objects,
-    const std::shared_ptr<object_t> ignore, float& t) {
+    const std::vector<std::shared_ptr<Object>>& objects,
+    const std::shared_ptr<Object> ignore, float& t) {
     t = std::numeric_limits<float>::max() / 2;
-    std::shared_ptr<object_t> ret = nullptr;
+    std::shared_ptr<Object> ret = nullptr;
     for (auto& object : objects) {
         if (object == ignore) continue;
         float t_candidate;
@@ -46,9 +46,9 @@ std::shared_ptr<object_t> intersect(
     return ret;
 }
 float get_shadow(const vec3& ray_d, const vec3& ray_o,
-                 const std::shared_ptr<light_t>& light,
-                 const std::vector<std::shared_ptr<object_t>>& objects,
-                 const std::shared_ptr<object_t> ignore) {
+                 const std::shared_ptr<Light>& light,
+                 const std::vector<std::shared_ptr<Object>>& objects,
+                 const std::shared_ptr<Object> ignore) {
     float light_intensity = 0;
     float t;  // unused
     if (light->soft_shadows) {
@@ -65,13 +65,13 @@ float get_shadow(const vec3& ray_d, const vec3& ray_o,
     }
 }
 vec3 direct_lighting(const vec3& hit, const vec3& normal,
-                     const std::shared_ptr<light_t>& light) {
+                     const std::shared_ptr<Light>& light) {
     vec3 abs_dir = light->absolute_dir(hit);
     return light->color * std::max(0.0f, normal.dot(abs_dir)) / M_PI;
 }
 vec3 raycast(const vec3& ray_d, const vec3& ray_o,
-             const std::vector<std::shared_ptr<object_t>>& objects,
-             const std::vector<std::shared_ptr<light_t>>& lights,
+             const std::vector<std::shared_ptr<Object>>& objects,
+             const std::vector<std::shared_ptr<Light>>& lights,
              const vec3& bg_color, int depth) {
     if (depth == 0) return {0, 0, 0};
 
@@ -105,8 +105,8 @@ vec3 raycast(const vec3& ray_d, const vec3& ray_o,
 }
 void render(float fov_rad, const vec3& look_from, const vec3& look_at,
             const vec3& up, float image_distance, const vec3& bg_color,
-            const std::vector<std::shared_ptr<object_t>>& objects,
-            const std::vector<std::shared_ptr<light_t>>& lights,
+            const std::vector<std::shared_ptr<Object>>& objects,
+            const std::vector<std::shared_ptr<Light>>& lights,
             image_t& image) {
     std::pair<int, int> res = {image.height, image.width};
 
