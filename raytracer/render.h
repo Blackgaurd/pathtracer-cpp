@@ -14,12 +14,12 @@
 #include "linalg.h"
 #include "object.h"
 
-#define BIAS 1e-5
-#define RENDER_DEPTH 2
-#define SHADOW_SAMPLES 16
+#define BIAS 1e-4
+#define RENDER_DEPTH 3
+#define SHADOW_SAMPLES 64
 
-// #define INDIRECT_LIGHTING
-#define INDIRECT_SAMPLES 16
+#define INDIRECT_LIGHTING
+#define INDIRECT_SAMPLES 64
 
 vec3 hemisphere_sample(const vec3& normal) {
     float u = rng.rand01(), v = rng.rand01();
@@ -55,7 +55,6 @@ float get_shadow(const vec3& ray_d, const vec3& ray_o,
         for (int i = 0; i < SHADOW_SAMPLES; i++) {
             vec3 rand_dir = light->random_dir(ray_o);
             auto obj = intersect(rand_dir, ray_o, objects, ignore, t);
-            if (obj != nullptr) std::cout << "shadow" << std::endl;
             if (obj == nullptr) light_intensity += light->intensity;
         }
         return light_intensity / SHADOW_SAMPLES;
@@ -88,7 +87,7 @@ vec3 raycast(const vec3& ray_d, const vec3& ray_o,
     vec3 color = {0, 0, 0};
     for (auto& light : lights) {
         float light_intensity =
-            get_shadow(ray_d, ray_o, light, objects, closest_object);
+            get_shadow(ray_d, hit + bias, light, objects, closest_object);
         vec3 direct_color = direct_lighting(hit + bias, normal, light);
         vec3 indirect_color = {0, 0, 0};
 #ifdef INDIRECT_LIGHTING
@@ -120,8 +119,15 @@ void render(float fov_rad, const vec3& look_from, const vec3& look_at,
     float cell_width = v_res.width / res.width;
 
     mat4 camera = mat4_constructors::camera(look_from, look_at, up);
+    std::cout << std::fixed << std::setprecision(2);
     for (int h = 0; h < res.height; h++) {
         for (int w = 0; w < res.width; w++) {
+            std::cout << "rendering pixel " << (h * res.width + w) << "/"
+                      << (res.width * res.height) << " = "
+                      << (float(h * res.width + w) / (res.width * res.height) *
+                          100)
+                      << "%\r" << std::flush;
+
             vec3 ray_d = {w * cell_width - v_res.width / 2 + cell_width / 2,
                           h * cell_width - v_res.height / 2 + cell_width / 2,
                           -image_distance};

@@ -93,10 +93,16 @@ namespace color {
 color_def(white, 1, 1, 1);
 color_def(black, 0, 0, 0);
 color_def(red, 1, 0, 0);
+color_def(orange, 1, 0.5, 0);
+color_def(yellow, 1, 1, 0);
 color_def(green, 0, 1, 0);
 color_def(blue, 0, 0, 1);
-color_def(yellow, 1, 1, 0);
+color_def(purple, 0.5, 0, 0.5);
 #undef color_def
+
+vec3 mix(const vec3& a, const vec3& b, float t = 0.5) {
+    return a * (1 - t) + b * t;
+}
 }  // namespace color
 struct mat4 {
     std::array<std::array<float, 4>, 4> arr;
@@ -139,8 +145,7 @@ struct mat4 {
 namespace mat4_constructors {
 mat4 identity() {
     mat4 m(0);
-    for (size_t i = 0; i < 4; i++)
-        m[i][i] = 1;
+    for (size_t i = 0; i < 4; i++) m[i][i] = 1;
     return m;
 }
 mat4 camera(const vec3& look_from, const vec3& look_at, const vec3& up) {
