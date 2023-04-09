@@ -16,17 +16,20 @@ struct Light {
     virtual float distance(const vec3& p) const = 0;
 };
 
-struct DirLight : public Light {
+struct DirectionalLight : public Light {
     vec3 dir;
 
-    DirLight() = default;
-    DirLight(const vec3& dir, const vec3& color, float intensity)
+    DirectionalLight() = default;
+    DirectionalLight(const vec3& dir, const vec3& color, float intensity)
         : dir(dir) {
         this->color = color;
         this->intensity = intensity;
         this->soft_shadows = false;
     }
     vec3 absolute_dir(const vec3& p) const override {
+        return -dir;
+    }
+    vec3 random_dir(const vec3& p) const override {
         return -dir;
     }
     float distance(const vec3& p) const override {

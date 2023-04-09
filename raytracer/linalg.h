@@ -17,6 +17,27 @@ struct vec2 {
     vec2() = default;
     vec2(float v) : x(v), y(v) {}
     vec2(float x, float y) : x(x), y(y) {}
+
+    bool operator==(const vec2& o) const {
+        return std::abs(x - o.x) < EPS && std::abs(y - o.y) < EPS;
+    }
+    bool operator!=(const vec2& o) const {
+        return !(*this == o);
+    }
+};
+
+struct Resolution {
+    int width, height;
+
+    Resolution() = default;
+    Resolution(int width, int height) : width(width), height(height) {}
+
+    bool operator==(const Resolution& o) const {
+        return width == o.width && height == o.height;
+    }
+    bool operator!=(const Resolution& o) const {
+        return !(*this == o);
+    }
 };
 struct vec3 {
     float x, y, z;
@@ -80,6 +101,12 @@ struct vec3 {
     vec3 reflect(const vec3& normal) const {
         return *this - normal * 2 * dot(normal);
     }
+    float max() const {
+        return std::max({x, y, z});
+    }
+    float min() const {
+        return std::min({x, y, z});
+    }
     vec3 apply(std::function<float(float)> f) const {
         return vec3(f(x), f(y), f(z));
     }
@@ -100,8 +127,8 @@ color_def(blue, 0, 0, 1);
 color_def(purple, 0.5, 0, 0.5);
 #undef color_def
 
-vec3 mix(const vec3& a, const vec3& b, float t = 0.5) {
-    return a * (1 - t) + b * t;
+vec3 mix(const vec3& a, const vec3& b, float a_t = 0.5) {
+    return a * (1 - a_t) + b * a_t;
 }
 }  // namespace color
 struct mat4 {
@@ -142,37 +169,6 @@ struct mat4 {
         return os;
     }
 };
-namespace mat4_constructors {
-mat4 identity() {
-    mat4 m(0);
-    for (size_t i = 0; i < 4; i++) m[i][i] = 1;
-    return m;
-}
-mat4 camera(const vec3& look_from, const vec3& look_at, const vec3& up) {
-    vec3 forward = (look_from - look_at).normalize();
-
-    if (forward.angle(up) < EPS || forward.angle(-up) < EPS) {
-        std::cerr << "forward and up vectors are parallel" << std::endl;
-        return identity();
-    }
-
-    vec3 left = up.cross(forward).normalize();
-    vec3 true_up = forward.cross(left).normalize();
-
-    mat4 m = identity();
-#define set_row(i, v) \
-    m[i][0] = v.x;    \
-    m[i][1] = v.y;    \
-    m[i][2] = v.z;
-    set_row(0, left);
-    set_row(1, true_up);
-    set_row(2, forward);
-    set_row(3, look_from);
-#undef set_row
-
-    return m;
-}
-}  // namespace mat4_constructors
 
 float clamp(float x, float min, float max) {
     return std::max(min, std::min(max, x));

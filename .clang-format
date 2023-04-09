@@ -4,6 +4,6 @@ ColumnLimit: 80
 AllowShortFunctionsOnASingleLine: Empty
 DerivePointerAlignment: false
 PointerAlignment: Left
-SortIncludes: false
+SortIncludes: true
 SpaceBeforeAssignmentOperators: true
 TabWidth: 4

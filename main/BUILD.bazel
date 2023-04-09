@@ -10,7 +10,8 @@ cc_binary(
     deps = [
         "//raytracer:rng",
         "//raytracer:linalg",
-        "//raytracer:render",
+        "//raytracer:camera",
+        "//raytracer:scene",
         "//raytracer:object",
         "//raytracer:light",
         "//raytracer:image",

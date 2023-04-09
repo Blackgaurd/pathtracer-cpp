@@ -2,29 +2,30 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
-#include <random>
 
 #include "fpng/fpng.h"
+#include "raytracer/camera.h"
+#include "raytracer/light.h"
 #include "raytracer/linalg.h"
 #include "raytracer/object.h"
-#include "raytracer/render.h"
 #include "raytracer/rng.h"
+#include "raytracer/scene.h"
 
 int main() {
-    image_t out_image(600, 480);
+    vec3 light_green = {0.5, 1, 0.5};
+    vec3 gray = {0.2, 0.2, 0.2};
 
-    std::vector<std::shared_ptr<Object>> objects;
-    objects.push_back(std::make_shared<Sphere>(Sphere({0, 0, 0}, 2, color::mix(color::red, color::green, 0.5))));
-    objects.push_back(std::make_shared<Sphere>(Sphere({0, -10002, 0}, 10000, color::white)));
+    Scene scene;
+    scene.add_object<Sphere>(vec3{10, 0, -3}, 2, light_green);
+    scene.add_object<Sphere>(vec3{10, 0, 3}, 2, color::white);
+    scene.add_object<Sphere>(vec3{10, -10002, 0}, 10000, gray);
+    scene.add_light<PointLight>(vec3{7, 3, 0}, 0.5, color::white, 1);
 
-    std::vector<std::shared_ptr<Light>> lights;
-    lights.push_back(std::make_shared<PointLight>(PointLight({-4, 0.5, 2}, 5, color::white, 1)));
-    lights.push_back(std::make_shared<PointLight>(PointLight({1, 3, -2}, 1, color::white, 1)));
+    float fov = 70 * M_PI / 180;
+    Camera camera = Camera({600, 480}, fov, 1, {0, 0, 0}, {1, 0, 0}, {0, 1, 0});
+    Image image = Image(camera.res);
 
-    vec3 look_from = {-10, 0, 0};
-    vec3 look_at = {-9, 0, 0};
-    vec3 bg_color = color::black;
-
-    render(70 * M_PI / 180, look_from, look_at, {0, 1, 0}, 1, bg_color, objects, lights, out_image);
-    out_image.write_png("out5.png");
+    scene.render(image, camera, 3);
+    image.write_png("output2.png");
+    //image.write_ppm("output.ppm");
 }
