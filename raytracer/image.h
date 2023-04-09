@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include "fpng/fpng.h"
+#include "fpng.h"
 #include "linalg.h"
 
 struct Image {

@@ -4,17 +4,10 @@ cc_binary(
     name = "main",
     srcs = ["main.cc"],
     copts = [
-        "-std=c++17", # for unique_ptr
+        "-std=c++17",  # for unique_ptr
         "-O3",
     ],
     deps = [
-        "//raytracer:rng",
-        "//raytracer:linalg",
-        "//raytracer:camera",
-        "//raytracer:scene",
-        "//raytracer:object",
-        "//raytracer:light",
-        "//raytracer:image",
-        "//fpng:fpng",
+        "//raytracer",
     ],
 )

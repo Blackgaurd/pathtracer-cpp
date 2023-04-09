@@ -4,13 +4,7 @@
 #include <memory>
 #include <string>
 
-#include "fpng/fpng.h"
-#include "raytracer/camera.h"
-#include "raytracer/light.h"
-#include "raytracer/linalg.h"
-#include "raytracer/object.h"
-#include "raytracer/rng.h"
-#include "raytracer/scene.h"
+#include "raytracer/raytracer.h"
 
 int main() {
     vec3 light_green = {0.5, 1, 0.5};

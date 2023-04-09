@@ -35,7 +35,6 @@ struct Scene {
     float shift_bias = 1e-4;
     int shadow_samples = 64;
     int indirect_samples = 64;
-    // int anti_aliasing = 1;
 
     Scene() = default;
 
@@ -54,22 +53,21 @@ struct Scene {
         lights.push_back(light);
     }
 
-    void render(Image& image, const Camera& camera, int depth) {
+    void render(Image& image, const Camera& camera, int depth,
+                int anti_alias = 1) {
         if (camera.res != image.res)
             throw std::runtime_error("Camera and image resolution mismatch");
 
         Resolution res = image.res;
-        int pixels = res.width * res.height;
-        std::cout << std::fixed << std::setprecision(2);
         for (int h = 0; h < res.height; h++) {
             for (int w = 0; w < res.width; w++) {
-                std::cout << "Rendering: "
-                          << 100.0 * (h * res.width + w) / pixels << "%"
-                          << std::flush << "\r";
-                vec3 ray_o, ray_d;
-                camera.get_ray(w, h, ray_o, ray_d);
-                vec3 color = raycast(ray_o, ray_d, depth);
-                image.set_pixel(w, h, color);
+                vec3 color = {0, 0, 0};
+                for (int i = 0; i < anti_alias; i++) {
+                    vec3 ray_o, ray_d;
+                    camera.get_ray(w, h, ray_o, ray_d);
+                    color += raycast(ray_o, ray_d, depth);
+                }
+                image.set_pixel(w, h, color / anti_alias);
             }
         }
     }

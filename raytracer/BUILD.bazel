@@ -3,46 +3,87 @@ load("@rules_cc//cc:defs.bzl", "cc_library")
 cc_library(
     name = "rng",
     hdrs = ["rng.h"],
-    visibility = ["//visibility:public"],
+    visibility = ["//visibility:private"],
 )
 
 cc_library(
     name = "linalg",
     hdrs = ["linalg.h"],
-    visibility = ["//visibility:public"],
+    visibility = ["//visibility:private"],
+)
+
+cc_library(
+    name = "fpng",
+    srcs = ["fpng.cc"],
+    hdrs = ["fpng.h"],
+    copts = [
+        "-DFPNG_NO_SSE",
+        "-w",
+    ],
+    visibility = ["//visibility:private"],
 )
 
 cc_library(
     name = "image",
     hdrs = ["image.h"],
-    deps = [":linalg", "//fpng:fpng"],
-    visibility = ["//visibility:public"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":fpng",
+        ":linalg",
+    ],
 )
 
 cc_library(
     name = "light",
     hdrs = ["light.h"],
-    deps = [":linalg", ":rng"],
-    visibility = ["//visibility:public"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":linalg",
+        ":rng",
+    ],
 )
 
 cc_library(
     name = "object",
     hdrs = ["object.h"],
+    visibility = ["//visibility:private"],
     deps = [":linalg"],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "camera",
     hdrs = ["camera.h"],
-    deps = [":linalg", ":rng"],
-    visibility = ["//visibility:public"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":linalg",
+        ":rng",
+    ],
 )
 
 cc_library(
     name = "scene",
     hdrs = ["scene.h"],
-    deps = [":camera", ":image", ":light", ":object", ":rng"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":camera",
+        ":image",
+        ":light",
+        ":object",
+        ":rng",
+    ],
+)
+
+cc_library(
+    name = "raytracer",
+    hdrs = ["raytracer.h"],
     visibility = ["//visibility:public"],
+    deps = [
+        ":camera",
+        ":image",
+        ":light",
+        ":linalg",
+        ":object",
+        ":rng",
+        ":scene",
+    ],
 )
