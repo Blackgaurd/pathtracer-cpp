@@ -32,9 +32,9 @@ struct Scene {
     vec3 bg_color = {0, 0, 0};
 
     // settings
-    const float shift_bias = 1e-4;
-    const int shadow_samples = 64;
-    const int indirect_samples = 64;
+    float shift_bias = 1e-4;
+    int shadow_samples = 64;
+    int indirect_samples = 64;
     // int anti_aliasing = 1;
 
     Scene() = default;
