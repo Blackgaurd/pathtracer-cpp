@@ -17,12 +17,26 @@ struct Image {
           pixels(resolution.height, std::vector<vec3>(resolution.width)) {}
 
     void set_pixel(int w, int h, const vec3& color) {
+        if (w < 0 || w >= res.width || h < 0 || h >= res.height)
+            throw std::out_of_range("pixel out of range");
         pixels[h][w] = color;
     }
     vec3 get_pixel(int w, int h) const {
         if (w < 0 || w >= res.width || h < 0 || h >= res.height)
             throw std::out_of_range("pixel out of range");
         return pixels[h][w];
+    }
+    void add_layer(const Image& layer) {
+        if (res != layer.res)
+            throw std::invalid_argument("resolution mismatch");
+        for (int h = 0; h < res.height; h++)
+            for (int w = 0; w < res.width; w++)
+                pixels[h][w] += layer.pixels[h][w];
+    }
+    void divide(float factor) {
+        for (int h = 0; h < res.height; h++)
+            for (int w = 0; w < res.width; w++)
+                pixels[h][w] /= factor;
     }
     void write_png(std::string filename) {
         std::vector<unsigned char> data(res.width * res.height * 3);

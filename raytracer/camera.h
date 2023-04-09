@@ -1,6 +1,7 @@
 #pragma once
 
 #include "linalg.h"
+#include "rng.h"
 
 struct fResolution {
     float width, height;
@@ -56,10 +57,11 @@ struct Camera {
                      static_cast<float>(resolution.height) / resolution.width};
         cell_size = v_res.width / resolution.width;
     }
-    void get_ray(float w, float h, vec3& ray_o, vec3& ray_d) const {
-        // todo: add random jitter
-        ray_d = {w * cell_size - v_res.width / 2 /*  + cell_size / 2 */,
-                 h * cell_size - v_res.height / 2 /*  + cell_size / 2 */,
+
+    void get_ray(int w, int h, vec3& ray_o, vec3& ray_d) const {
+        float jitter_w = rng.rand01() * cell_size, jitter_h = rng.rand01() * cell_size;
+        ray_d = {w * cell_size - v_res.width / 2 + jitter_w,
+                 h * cell_size - v_res.height / 2 + jitter_h,
                  -image_distance};
         ray_d = transform.transform_dir(ray_d).normalize();
         ray_o = look_from;
