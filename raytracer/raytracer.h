@@ -9,3 +9,5 @@
 #include "scene.h"
 
 #define RAYTRACER_VERSION "0.1.0"
+
+static_assert(__cplusplus >= 201703L, "raytracer requires C++17");
