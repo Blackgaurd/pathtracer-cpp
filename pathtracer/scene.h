@@ -66,7 +66,7 @@ struct Scene {
         }
 
         vec3 hit_p = ray_o + ray_d * hit_t;
-        vec3 hit_n = hit_obj->normal(hit_p);
+        vec3 hit_n = hit_obj->normal(ray_d, hit_p);
         vec3 bias = hit_n * shift_bias;
 
         vec3 new_d = hit_obj->material->reflected_dir(ray_d, hit_n);
