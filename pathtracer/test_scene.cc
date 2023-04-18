@@ -13,9 +13,10 @@ int main() {
     auto white_diffuse = std::make_shared<Diffuse>(vec3(1, 1, 1));
     auto green_emit = std::make_shared<Emit>(vec3(0, 1, 0));
     auto white_emit = std::make_shared<Emit>(vec3(1, 1, 1));
+    auto yellow_specular = std::make_shared<Specular>(vec3(1, 1, 0), 0.1);
 
     Scene scene;
-    scene.add_object<Sphere>(vec3(0, 0, 0), 5, red_diffuse);
+    scene.add_object<Sphere>(vec3(0, 0, 0), 5, yellow_specular);
     scene.add_object<Sphere>(vec3(0, -10005, 0), 10000, white_diffuse);
     scene.add_object<Sphere>(vec3(10, 10, 2), 5, white_emit);
 
@@ -28,5 +29,5 @@ int main() {
     scene.render(camera, image, 3, 1000);
 
     image.gamma_correct(2.2);
-    image.write_png("test.png");
+    image.write_png("test3.png");
 }

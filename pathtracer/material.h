@@ -56,7 +56,7 @@ struct Emit : public Material {
     }
 };
 
-/* struct Specular : public Material {
+struct Specular : public Material {
     // specular reflection
     float roughness;
 
@@ -66,10 +66,22 @@ struct Emit : public Material {
         this->color = color;
         this->emission = {0, 0, 0};
     }
+
+    vec3 reflected_dir(const vec3& ray_d, const vec3& normal) const override {
+        vec3 reflected = ray_d - 2 * ray_d.dot(normal) * normal;
+
+        // rejection sampling, idk how to do this better
+        vec3 ret;
+        do {
+            vec3 jitter = (vec3(rng.rand01(), rng.rand01(), rng.rand01()) - 0.5) * roughness;
+            ret = (reflected + jitter).normalize();
+        } while (ret.dot(normal) < 0);
+        return ret;
+    }
 };
 
 struct Mirror : public Material {
-    // specular with 0 roughness
+    // specular with 0 roughness, a bit more efficient
 
     Mirror() = default;
     Mirror(const vec3& color) {
@@ -77,4 +89,8 @@ struct Mirror : public Material {
         this->color = color;
         this->emission = {0, 0, 0};
     }
-}; */
+
+    vec3 reflected_dir(const vec3& ray_d, const vec3& normal) const override {
+        return ray_d - 2 * ray_d.dot(normal) * normal;
+    }
+};

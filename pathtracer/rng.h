@@ -16,7 +16,7 @@ struct lcg {
         return state;
     }
     float rand01() {
-        return (float)(*this)() / m;
+        return static_cast<float>((*this)()) / m;
     }
 
     // define min and max to work with std::uniform_real_distribution
