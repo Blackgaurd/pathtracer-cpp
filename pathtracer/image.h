@@ -38,6 +38,11 @@ struct Image {
             for (int w = 0; w < res.width; w++)
                 pixels[h][w] /= factor;
     }
+    void gamma_correct(float gamma) {
+        for (int h = 0; h < res.height; h++)
+            for (int w = 0; w < res.width; w++)
+                pixels[h][w] = pow(pixels[h][w], 1 / gamma);
+    }
     void write_png(std::string filename) {
         std::vector<unsigned char> data(res.width * res.height * 3);
         for (int h = 0; h < res.height; h++) {

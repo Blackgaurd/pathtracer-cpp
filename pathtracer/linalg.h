@@ -1,5 +1,9 @@
 #pragma once
 
+// make sure c++17
+
+static_assert(__cplusplus >= 201703L, "C++17 required");
+
 #include <array>
 #include <cmath>
 #include <functional>
@@ -109,6 +113,10 @@ struct vec3 {
     }
     vec3 apply(std::function<float(float)> f) const {
         return vec3(f(x), f(y), f(z));
+    }
+
+    friend vec3 pow(const vec3& v, float p) {
+        return vec3(std::pow(v.x, p), std::pow(v.y, p), std::pow(v.z, p));
     }
 
     friend std::ostream& operator<<(std::ostream& os, const vec3& v) {
