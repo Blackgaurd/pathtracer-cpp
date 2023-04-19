@@ -63,15 +63,18 @@ BVHNodePtr build_bvh(std::vector<ObjectPtr>& objects) {
 
     return cur;
 }
-ObjectPtr intersect(const BVHNodePtr& node, const vec3& ray_o,
-                    const vec3& ray_d, float& t) {
+ObjectPtr intersect_bvh(const BVHNodePtr& node, const vec3& ray_o,
+                        const vec3& ray_d, float& t,
+                        const ObjectPtr& ignore = nullptr) {
+    // doesnt work well when ray_o is inside the aabb
     if (!node->aabb.intersect(ray_o, ray_d)) return nullptr;
     if (node->is_leaf) {
+        if (node->object == ignore) return nullptr;
         if (node->object->intersect(ray_o, ray_d, t)) return node->object;
         return nullptr;
     }
-    ObjectPtr left = intersect(node->left, ray_o, ray_d, t);
-    ObjectPtr right = intersect(node->right, ray_o, ray_d, t);
+    ObjectPtr left = intersect_bvh(node->left, ray_o, ray_d, t);
+    ObjectPtr right = intersect_bvh(node->right, ray_o, ray_d, t);
     if (left) return left;
     return right;
 }

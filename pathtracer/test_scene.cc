@@ -14,22 +14,20 @@ int main() {
     auto green_emit = std::make_shared<Emit>(vec3(0, 1, 0));
     auto white_emit = std::make_shared<Emit>(vec3(1, 1, 1));
     auto yellow_specular = std::make_shared<Specular>(vec3(1, 1, 0), 0.3);
+    auto white_specular = std::make_shared<Specular>(vec3(1, 1, 1), 0.2);
 
     Scene scene;
-    //scene.add_object<Sphere>(vec3(0, 0, 0), 5, yellow_specular);
-    scene.add_object<Sphere>(vec3(0, -10005, 0), 10000, white_diffuse);
-    scene.add_object<Sphere>(vec3(10, 10, 2), 5, white_emit);
-    scene.add_object<Triangle>(vec3(4, 0, 0), vec3(0, 4, 0), vec3(0, 0, 4),
-                               red_diffuse);
+    std::unordered_map<std::string, std::shared_ptr<Material>> materials;
+    materials["(null)"] = white_diffuse;
+    scene.load_obj("pathtracer/torus.obj", materials);
+    //scene.add_object<Sphere>(vec3(0, -100, 0), 98, white_diffuse);
+    scene.add_object<Sphere>(vec3(2.5, 1, 0.5), 0.3, green_emit);
 
-    vec3 look_from = vec3(20, 5, 0), look_at = vec3(0, 0, 0);
-    Resolution res = {600, 480};
-    Camera camera =
-        Camera(res, 70 * M_PI / 180, 1, look_from, look_at, vec3(0, 1, 0));
+    vec3 look_from = vec3(4, 3, 2), look_at = vec3(2.5, 1, 0.5);
 
-    Image image = Image(res);
-    scene.render(camera, image, 3, 1000);
-
-    image.gamma_correct(2.2);
-    image.write_png("test3.png");
+    Resolution res(600, 480);
+    Camera camera(res, 70 * M_PI / 180, 1, look_from, look_at, vec3(0, 1, 0));
+    Image image(res);
+    scene.render(camera, image, 3, 100);
+    image.write_png("pathtracer/test_scene.png");
 }

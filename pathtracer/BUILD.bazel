@@ -77,6 +77,7 @@ cc_library(
     hdrs = ["scene.h"],
     visibility = ["//visibility:private"],
     deps = [
+        ":bvh",
         ":camera",
         ":image",
         ":linalg",

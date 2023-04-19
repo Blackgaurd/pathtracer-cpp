@@ -44,14 +44,14 @@ struct Sphere : public Object {
         return t > 0;
     }
     vec3 normal(const vec3& ray_d, const vec3& p) const override {
-        return (p - center).normalize();
+        vec3 n = (p - center).normalize();
+        return n.dot(ray_d) < 0 ? n : -n;
     }
     vec3 centroid() const override {
         return center;
     }
     AABB aabb() const override {
-        return AABB{center - vec3{radius, radius, radius},
-                    center + vec3{radius, radius, radius}};
+        return AABB(center - vec3(radius), center + vec3(radius));
     }
 };
 
@@ -102,7 +102,7 @@ struct Triangle : public Object {
         rt.x = std::max({v1.x, v2.x, v3.x});
         rt.y = std::max({v1.y, v2.y, v3.y});
         rt.z = std::max({v1.z, v2.z, v3.z});
-        return AABB{lb, rt};
+        return AABB(lb, rt);
     }
 };
 
