@@ -77,6 +77,12 @@ struct vec3 {
     vec3_op(/);
 #undef vec3_op
 
+    float& operator[](int i) {
+        if (i == 0) return x;
+        if (i == 1) return y;
+        if (i == 2) return z;
+        throw std::out_of_range("vec3 index out of range");
+    }
     vec3 operator-() const {
         return vec3(-x, -y, -z);
     }

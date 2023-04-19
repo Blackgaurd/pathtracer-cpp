@@ -44,6 +44,15 @@ cc_library(
 )
 
 cc_library(
+    name = "aabb",
+    hdrs = ["aabb.h"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":linalg",
+    ],
+)
+
+cc_library(
     name = "material",
     hdrs = ["material.h"],
     visibility = ["//visibility:private"],
@@ -76,6 +85,17 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "bvh",
+    hdrs = ["bvh.h"],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":aabb",
+        ":linalg",
+        ":object",
+    ],
+)
+
 cc_binary(
     name = "test_scene",
     srcs = ["test_scene.cc"],
@@ -85,5 +105,17 @@ cc_binary(
     ],
     deps = [
         ":scene",
+    ],
+)
+
+cc_binary(
+    name = "bvh_test",
+    srcs = ["bvh_test.cc"],
+    copts = [
+        "-std=c++17",
+        "-O3",
+    ],
+    deps = [
+        ":bvh",
     ],
 )
