@@ -108,6 +108,9 @@ struct vec3 {
     float angle(const vec3& o) const {
         return std::acos(dot(o) / (length() * o.length()));
     }
+    float distance(const vec3& o) const {
+        return (*this - o).length();
+    }
     vec3 reflect(const vec3& normal) const {
         return *this - normal * 2 * dot(normal);
     }

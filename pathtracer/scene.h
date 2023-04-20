@@ -111,7 +111,10 @@ struct Scene {
 
     void render(const Camera& camera, Image& image, int depth = 5,
                 int samples = 1) {
+        std::cout << "Building BVH..." << std::endl;
         bvh_root = build_bvh(objects);
+        std::cout << "Done" << std::endl;
+        print_bvh(bvh_root);
 
         std::cout << std::fixed << std::setprecision(2);
         Resolution res = image.res;
@@ -150,8 +153,8 @@ struct Scene {
         if (depth == 0) return {0, 0, 0};
 
         float hit_t;
-        //ObjectPtr hit_obj = intersect_bvh(bvh_root, ray_o, ray_d, hit_t);
-        ObjectPtr hit_obj = intersect(ray_o, ray_d, hit_t);
+        ObjectPtr hit_obj = intersect_bvh(bvh_root, ray_o, ray_d, hit_t);
+        //ObjectPtr hit_obj = intersect(ray_o, ray_d, hit_t);
         if (!hit_obj) return {0, 0, 0};
 
         if (hit_obj->material->type == EMIT) {

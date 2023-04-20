@@ -14,67 +14,109 @@ using ObjectPtr = std::shared_ptr<Object>;
 struct BVHNode {
     AABB aabb;
     bool is_leaf;
-    ObjectPtr object;
+    std::vector<ObjectPtr> objects;
     std::shared_ptr<BVHNode> left, right;
 };
 using BVHNodePtr = std::shared_ptr<BVHNode>;
 
-BVHNodePtr build_bvh(std::vector<ObjectPtr>& objects) {
+BVHNodePtr build_bvh(const std::vector<ObjectPtr>& objects) {
+    // n^2 :despair:
     BVHNodePtr cur = std::make_shared<BVHNode>();
-    if (objects.size() == 1) {
+
+    cur->aabb = objects[0]->aabb();
+    for (size_t i = 1; i < objects.size(); i++) cur->aabb = cur->aabb.merge(objects[i]->aabb());
+
+    int best_axis = -1;
+    float split_pos = 0, min_cost = std::numeric_limits<float>::max();
+    for (int axis = 0; axis < 3; axis++) {
+        for (const ObjectPtr& object : objects) {
+            float pos = object->centroid()[axis];
+            int left_cnt = 0, right_cnt = 0;
+            AABB left_aabb, right_aabb;
+            for (const ObjectPtr& other : objects) {
+                if (other->centroid()[axis] < pos) {
+                    left_cnt++;
+                    left_aabb = left_aabb.merge(other->aabb());
+                } else {
+                    right_cnt++;
+                    right_aabb = right_aabb.merge(other->aabb());
+                }
+            }
+            float cost = left_cnt * left_aabb.area() + right_cnt * right_aabb.area();
+            std::cout << "cost " << cost << " left cnt " << left_cnt << " left area "
+                      << left_aabb.area() << " right cnt " << right_cnt << " right area "
+                      << right_aabb.area() << std::endl;
+            if (cost > 0 && cost < min_cost) {
+                min_cost = cost;
+                best_axis = axis;
+                split_pos = pos;
+            }
+        }
+    }
+
+    float nosplit_cost = objects.size() * cur->aabb.area();
+    if (best_axis == -1 || min_cost > nosplit_cost) {
+        std::cout << "returning on bad split " << best_axis << " " << min_cost << " "
+                  << nosplit_cost << std::endl;
         cur->is_leaf = true;
-        cur->object = objects[0];
-        cur->aabb = objects[0]->aabb();
+        cur->objects = objects;
         return cur;
     }
 
-    cur->is_leaf = false;
-
-    // calculate the bounding box of all objects
-    cur->aabb = objects[0]->aabb();
-    for (const ObjectPtr& obj : objects) {
-        cur->aabb = cur->aabb.merge(obj->aabb());
-    }
-
-    // find the best axis and split point
-    // for now:
-    // split along the longest axis such that
-    // there are an equal number of objects on each side
-    vec3 diag = cur->aabb.rt - cur->aabb.lb;
-    int axis = 2;
-    if (diag.x > diag.y && diag.x > diag.z)
-        axis = 0;
-    else if (diag.y > diag.z)
-        axis = 1;
-
-    std::sort(objects.begin(), objects.end(),
-              [axis](const ObjectPtr& a, const ObjectPtr& b) {
-                  return a->aabb().lb[axis] < b->aabb().lb[axis];
-              });
-    std::vector<ObjectPtr> left, right;
-    for (size_t i = 0; i < objects.size(); i++) {
-        if (i < objects.size() / 2)
-            left.push_back(objects[i]);
+    std::vector<ObjectPtr> left_objects, right_objects;
+    for (const ObjectPtr& object : objects) {
+        if (object->centroid()[best_axis] < split_pos)
+            left_objects.push_back(object);
         else
-            right.push_back(objects[i]);
+            right_objects.push_back(object);
     }
-    cur->left = build_bvh(left);
-    cur->right = build_bvh(right);
 
+    cur->is_leaf = false;
+    cur->left = build_bvh(left_objects);
+    cur->right = build_bvh(right_objects);
     return cur;
 }
-ObjectPtr intersect_bvh(const BVHNodePtr& node, const vec3& ray_o,
-                        const vec3& ray_d, float& t,
+ObjectPtr intersect_bvh(const BVHNodePtr& node, const vec3& ray_o, const vec3& ray_d, float& t,
                         const ObjectPtr& ignore = nullptr) {
-    // doesnt work well when ray_o is inside the aabb
+    // todo: there is a bug here, to be fixed
+    if (!node) return nullptr;
     if (!node->aabb.intersect(ray_o, ray_d)) return nullptr;
     if (node->is_leaf) {
-        if (node->object == ignore) return nullptr;
-        if (node->object->intersect(ray_o, ray_d, t)) return node->object;
-        return nullptr;
+        ObjectPtr ret = nullptr;
+        for (const ObjectPtr& object : node->objects) {
+            if (object == ignore) continue;
+            float t_ = std::numeric_limits<float>::max();
+            if (object->intersect(ray_o, ray_d, t_) && t_ < t) {
+                t = t_;
+                ret = object;
+            }
+        }
+        return ret;
+    } else {
+        float t_left = std::numeric_limits<float>::max();
+        float t_right = std::numeric_limits<float>::max();
+        ObjectPtr left = intersect_bvh(node->left, ray_o, ray_d, t_left, ignore);
+        ObjectPtr right = intersect_bvh(node->right, ray_o, ray_d, t_right, ignore);
+        if (left && right) {
+            if (t_left < t_right) {
+                t = t_left;
+                return left;
+            } else {
+                t = t_right;
+                return right;
+            }
+        }
+        return left ? left : right;
     }
-    ObjectPtr left = intersect_bvh(node->left, ray_o, ray_d, t);
-    ObjectPtr right = intersect_bvh(node->right, ray_o, ray_d, t);
-    if (left) return left;
-    return right;
+}
+
+void print_bvh(const BVHNodePtr& node, int depth = 0) {
+    if (!node) return;
+    for (int i = 0; i < depth - 1; i++) std::cout << " | ";
+    if (depth > 0) std::cout << " +-";
+    std::cout << node->aabb.lb << " " << node->aabb.rt;
+    if (node->is_leaf) std::cout << " leaf";
+    std::cout << std::endl;
+    print_bvh(node->left, depth + 1);
+    print_bvh(node->right, depth + 1);
 }
