@@ -22,15 +22,19 @@ struct AABB {
         vec3 t1 = (lb - ray_o) * inv_d;
         vec3 t2 = (rt - ray_o) * inv_d;
 
-        float tmin = std::max({std::min(t1.x, t2.x), std::min(t1.y, t2.y), std::min(t1.z, t2.z)});
         float tmax = std::min({std::max(t1.x, t2.x), std::max(t1.y, t2.y), std::max(t1.z, t2.z)});
+        float tmin = std::max({std::min(t1.x, t2.x), std::min(t1.y, t2.y), std::min(t1.z, t2.z)});
 
         if (tmax < 0) return false;
         return tmin <= tmax;
     }
     float area() const {
         // returns half of the surface area
+        if (!is_valid()) return 0;
         vec3 d = rt - lb;
         return d.x * d.y + d.x * d.z + d.y * d.z;
+    }
+    bool is_valid() const {
+        return lb.x <= rt.x && lb.y <= rt.y && lb.z <= rt.z;
     }
 };
