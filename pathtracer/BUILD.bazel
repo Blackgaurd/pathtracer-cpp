@@ -1,14 +1,20 @@
-load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 
 cc_library(
     name = "fpng",
     srcs = ["fpng.cc"],
     hdrs = ["fpng.h"],
-    copts =
-        [
-            "-DFPNG_NO_SSE",
-            "-w",
-        ],
+    copts = [
+        "-DFPNG_NO_SSE",
+        "-w",
+    ],
+    visibility = ["//visibility:private"],
+)
+
+cc_library(
+    name = "tinyobj",
+    srcs = ["tiny_obj_loader.cc"],
+    hdrs = ["tiny_obj_loader.h"],
     visibility = ["//visibility:private"],
 )
 
@@ -90,6 +96,7 @@ cc_library(
             ":linalg",
             ":material",
             ":object",
+            ":tinyobj",
         ],
 )
 
@@ -120,17 +127,4 @@ cc_library(
             ":rng",
             ":scene",
         ],
-)
-
-cc_binary(
-    name = "test_scene",
-    srcs = ["test_scene.cc"],
-    copts =
-        [
-            "-std=c++17",
-            "-O3",
-        ],
-    deps = [
-        ":pathtracer",
-    ],
 )

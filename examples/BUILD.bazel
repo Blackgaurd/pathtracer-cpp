@@ -1,11 +1,21 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
 
 cc_binary(
-    name = "cornell-box",
-    srcs = ["cornell/script.cc"],
+    name = "cornell",
+    srcs = ["cornell/default.cc"],
     copts = [
         "-std=c++17",
         "-O3",
     ],
     deps = ["//pathtracer"],
+)
+
+cc_binary(
+    name = "cats",
+    srcs = ["cats/cats.cc"],
+    copts = [
+        "-std=c++17",
+        "-O3",
+    ],
+    deps = ["//pathtracer:pathtracer"],
 )

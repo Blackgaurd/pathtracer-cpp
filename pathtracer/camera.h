@@ -30,8 +30,7 @@ struct Camera {
         vec3 forward = (look_from - look_at).normalize();
 
         if (forward.angle(up) < EPS || forward.angle(-up) < EPS) {
-            std::cerr << "forward and up vectors are parallel" << std::endl;
-            exit(1);
+            throw std::runtime_error("up vector is parallel to forward vector");
             return;
         }
 

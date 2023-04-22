@@ -1,13 +1,10 @@
 #pragma once
 
-#include <fstream>
 #include <iomanip>
 #include <memory>
 #include <ostream>
-#include <sstream>
 #include <stdexcept>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
 #include "bvh.h"
@@ -16,27 +13,8 @@
 #include "linalg.h"
 #include "material.h"
 #include "object.h"
+#include "tiny_obj_loader.h"
 
-std::string strip(const std::string& s, char c) {
-    size_t start = 0, end = s.size() - 1;
-    while (start < s.size() && s[start] == c) start++;
-    while (end > start && s[end] == c) end--;
-    return s.substr(start, end - start + 1);
-}
-std::vector<std::string> split(const std::string& s, const std::string& delimiter) {
-    size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-    std::string token;
-    std::vector<std::string> res;
-
-    while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
-        token = s.substr(pos_start, pos_end - pos_start);
-        pos_start = pos_end + delim_len;
-        res.push_back(token);
-    }
-
-    res.push_back(s.substr(pos_start));
-    return res;
-}
 struct Scene {
     std::vector<ObjectPtr> objects;
     BVHNodePtr bvh_root;
@@ -49,58 +27,70 @@ struct Scene {
     void add_object(Args&&... args) {
         objects.push_back(std::make_shared<T>(std::forward<Args>(args)...));
     }
-    void load_obj(const std::string& filename,
-                  const std::unordered_map<std::string, MaterialPtr>& materials) {
-        std::ifstream file(filename);
-        if (!file.is_open()) {
-            std::cerr << "Failed to open file " << filename << std::endl;
-            return;
+    void load_obj(const std::string& filename, const std::string& mtl_path = "./") {
+        tinyobj::ObjReaderConfig reader_config;
+        reader_config.mtl_search_path = mtl_path;
+
+        tinyobj::ObjReader reader;
+        if (!reader.ParseFromFile(filename, reader_config)) {
+            if (!reader.Error().empty())
+                throw std::runtime_error("TinyObjLoader: " + reader.Error());
+            throw std::runtime_error("TinyObjLoader: unknown error");
         }
 
-        std::string command, cur_mat;
-        std::vector<vec3> vertices;
-        while (file >> command) {
-            if (command == "#") {
-                // comment
-                std::getline(file, command);
-            } else if (command == "v") {
-                float x, y, z;
-                file >> x >> y >> z;
-                vertices.emplace_back(x, y, z);
-            } else if (command == "f") {
-                if (materials.find(cur_mat) == materials.end()) {
-                    std::cerr << "Material " << cur_mat << " not found" << std::endl;
-                    break;
+        if (!reader.Warning().empty()) {
+            std::cout << "TinyObjLoader: " << reader.Warning() << std::endl;
+        }
+
+        const auto& attrib = reader.GetAttrib();
+        const auto& shapes = reader.GetShapes();
+        const auto& materials = reader.GetMaterials();
+
+        for (const auto& shape : shapes) {
+            size_t index_offset = 0;
+            for (size_t poly = 0; poly < shape.mesh.num_face_vertices.size(); poly++) {
+                size_t vertices = shape.mesh.num_face_vertices[poly];
+                std::vector<vec3> points;
+                for (size_t v = 0; v < vertices; v++) {
+                    auto idx = shape.mesh.indices[index_offset + v];
+                    auto vx = attrib.vertices[3 * idx.vertex_index];
+                    auto vy = attrib.vertices[3 * idx.vertex_index + 1];
+                    auto vz = attrib.vertices[3 * idx.vertex_index + 2];
+                    points.emplace_back(vx, vy, vz);
                 }
-                std::string args;
-                std::getline(file, args);
-                args = strip(args, ' ');
-                std::vector<std::string> tokens = split(args, " ");
-                std::vector<vec3> face_vertices;
-                for (const std::string& token : tokens) {
-                    std::vector<std::string> indices = split(token, "//");
-                    int index = std::stoi(indices[0]) - 1;
-                    face_vertices.push_back(vertices[index]);
+                index_offset += vertices;
+
+                int mat_id = shape.mesh.material_ids[poly];
+                auto& mat = materials[mat_id];
+                MaterialPtr material;
+                switch (mat.illum) {
+                    case 1: {
+                        // diffuse
+                        vec3 color = vec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+                        material = std::make_shared<Diffuse>(color);
+                        break;
+                    }
+                    case 2: {
+                        // emit
+                        vec3 color = vec3(mat.ambient[0], mat.ambient[1], mat.ambient[2]);
+                        material = std::make_shared<Emit>(color);
+                        break;
+                    }
+                    default: {
+                        std::cerr << "Unknown material type with illum: " << mat.illum << std::endl;
+                        std::cerr << "Using default material: Diffuse(0.5)" << std::endl;
+                        material = std::make_shared<Diffuse>(vec3(0.5));
+                    }
                 }
-                if (tokens.size() == 3) {
-                    add_object<Triangle>(face_vertices[0], face_vertices[1], face_vertices[2],
-                                         materials.at(cur_mat));
-                } else if (tokens.size() == 4) {
-                    add_object<Triangle>(face_vertices[0], face_vertices[1], face_vertices[2],
-                                         materials.at(cur_mat));
-                    add_object<Triangle>(face_vertices[0], face_vertices[2], face_vertices[3],
-                                         materials.at(cur_mat));
-                }
-            } else if (command == "usemtl") {
-                file >> cur_mat;
-            } else {
-                std::getline(file, command);
+
+                add_object<Triangle>(points[0], points[1], points[2], material);
             }
         }
-        file.close();
     }
 
     void render(const Camera& camera, Image& image, int depth, int samples) {
+        if (objects.empty()) throw std::runtime_error("no objects in scene");
+
         std::cout << "Building BVH..." << std::endl;
         bvh_root = build_bvh(objects);
         std::cout << "Done" << std::endl;
@@ -138,6 +128,8 @@ struct Scene {
     }
     void render_threaded(const Camera& camera, Image& image, int depth, int samples, int threads) {
         // render on multiple threads
+        if (objects.empty()) throw std::runtime_error("no objects in scene");
+
         int max_threads = std::thread::hardware_concurrency();
         if (threads > max_threads - 1) {
             throw std::runtime_error("more than " + std::to_string(max_threads - 1) +

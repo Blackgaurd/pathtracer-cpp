@@ -1,3 +1,4 @@
 pathtracer/fpng.h linguist-vendored=false
 pathtracer/fpng.cc linguist-vendored=false
 pathtracer/tint_obj_loader.h linguist-vendored=false
+pathtracer/tint_obj_loader.cc linguist-vendored=false
