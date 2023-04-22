@@ -1,11 +1,11 @@
 #pragma once
 
 // make sure c++17
-
 static_assert(__cplusplus >= 201703L, "C++17 required");
 
 #include <array>
 #include <cmath>
+#include <stdexcept>
 #include <functional>
 #include <iostream>
 
@@ -14,21 +14,6 @@ static_assert(__cplusplus >= 201703L, "C++17 required");
 #endif
 
 #define EPS 1e-6
-
-struct vec2 {
-    float x, y;
-
-    vec2() = default;
-    vec2(float v) : x(v), y(v) {}
-    vec2(float x, float y) : x(x), y(y) {}
-
-    bool operator==(const vec2& o) const {
-        return std::abs(x - o.x) < EPS && std::abs(y - o.y) < EPS;
-    }
-    bool operator!=(const vec2& o) const {
-        return !(*this == o);
-    }
-};
 
 struct Resolution {
     int width, height;
@@ -50,26 +35,22 @@ struct vec3 {
     vec3(float v) : x(v), y(v), z(v) {}
     vec3(float x, float y, float z) : x(x), y(y), z(z) {}
 
-#define vec3_op(op)                                                          \
-    vec3 operator op(const vec3& o) const {                                  \
-        return vec3(x op o.x, y op o.y, z op o.z);                           \
-    }                                                                        \
-    vec3& operator op##=(const vec3& o) {                                    \
-        x op## = o.x;                                                        \
-        y op## = o.y;                                                        \
-        z op## = o.z;                                                        \
-        return *this;                                                        \
-    }                                                                        \
-    vec3 operator op(float o) const { return vec3(x op o, y op o, z op o); } \
-    vec3& operator op##=(float o) {                                          \
-        x op## = o;                                                          \
-        y op## = o;                                                          \
-        z op## = o;                                                          \
-        return *this;                                                        \
-    }                                                                        \
-    friend vec3 operator op(float o, const vec3& v) {                        \
-        return vec3(o op v.x, o op v.y, o op v.z);                           \
-    }
+#define vec3_op(op)                                                                      \
+    vec3 operator op(const vec3& o) const { return vec3(x op o.x, y op o.y, z op o.z); } \
+    vec3& operator op##=(const vec3& o) {                                                \
+        x op## = o.x;                                                                    \
+        y op## = o.y;                                                                    \
+        z op## = o.z;                                                                    \
+        return *this;                                                                    \
+    }                                                                                    \
+    vec3 operator op(float o) const { return vec3(x op o, y op o, z op o); }             \
+    vec3& operator op##=(float o) {                                                      \
+        x op## = o;                                                                      \
+        y op## = o;                                                                      \
+        z op## = o;                                                                      \
+        return *this;                                                                    \
+    }                                                                                    \
+    friend vec3 operator op(float o, const vec3& v) { return vec3(o op v.x, o op v.y, o op v.z); }
 
     vec3_op(+);
     vec3_op(-);
@@ -179,8 +160,7 @@ struct mat4 {
     friend std::ostream& operator<<(std::ostream& os, const mat4& m) {
         for (size_t i = 0; i < 4; i++) {
             os << "[";
-            for (size_t j = 0; j < 4; j++)
-                os << m[i][j] << (j == 3 ? "" : ", ");
+            for (size_t j = 0; j < 4; j++) os << m[i][j] << (j == 3 ? "" : ", ");
             os << "]\n";
         }
         return os;

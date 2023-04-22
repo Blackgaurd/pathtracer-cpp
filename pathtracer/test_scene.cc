@@ -112,5 +112,5 @@ int main() {
     //scene.render_threaded(camera, image, 5, 1000, 15);
     scene.render(camera, image, 5, 100);
     image.gamma_correct(2.2);
-    image.write_png("test_bvh_threaded.png");
+    image.save_png("test_bvh_threaded.png");
 }

@@ -5,6 +5,7 @@
 #include <memory>
 #include <ostream>
 #include <sstream>
+#include <stdexcept>
 #include <thread>
 #include <unordered_map>
 #include <vector>
@@ -15,8 +16,6 @@
 #include "linalg.h"
 #include "material.h"
 #include "object.h"
-
-#define FLOAT_INF 1e20
 
 std::string strip(const std::string& s, char c) {
     size_t start = 0, end = s.size() - 1;
@@ -151,24 +150,21 @@ struct Scene {
 
         std::vector<std::thread> pool(threads);
         std::vector<Image> images(threads, Image(image.res));
-        std::vector<int> job_count(threads, samples / threads);
-        for (int i = 0; i < samples % threads; i++) {
-            job_count[i]++;
-        }
 
         for (int i = 0; i < threads; i++) {
+            int sub_samples = samples / threads + (i < samples % threads);
             pool[i] = std::thread(&Scene::run_thread, this, std::ref(camera), std::ref(images[i]),
-                                  depth, job_count[i]);
+                                  depth, sub_samples);
         }
         for (int i = 0; i < threads; i++) pool[i].join();
-        for (const Image& img : images) image.add_layer(img);
-        image.divide(samples);
+        for (const Image& img : images) image += img;
+        image /= samples;
     }
     ObjectPtr intersect(const vec3& ray_o, const vec3& ray_d, float& hit_t,
                         const ObjectPtr& ignore = nullptr) {
         // brute force intersection
         ObjectPtr hit_obj = nullptr;
-        hit_t = FLOAT_INF;
+        hit_t = 1e30;
         for (ObjectPtr& obj : objects) {
             if (obj == ignore) continue;
 

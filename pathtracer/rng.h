@@ -1,6 +1,6 @@
 #pragma once
 
-#define SEED 123
+#define SEED 1
 
 // linear congruential generator
 struct lcg {
@@ -17,6 +17,9 @@ struct lcg {
     }
     float rand01() {
         return static_cast<float>((*this)()) / m;
+    }
+    void seed(unsigned int seed) {
+        state = seed;
     }
 
     // define min and max to work with std::uniform_real_distribution
