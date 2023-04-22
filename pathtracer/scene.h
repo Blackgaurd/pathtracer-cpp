@@ -1,12 +1,13 @@
 #pragma once
 
 #include <fstream>
+#include <iomanip>
 #include <memory>
+#include <ostream>
 #include <sstream>
+#include <thread>
 #include <unordered_map>
 #include <vector>
-#include <ostream>
-#include <iomanip>
 
 #include "bvh.h"
 #include "camera.h"
@@ -23,8 +24,7 @@ std::string strip(const std::string& s, char c) {
     while (end > start && s[end] == c) end--;
     return s.substr(start, end - start + 1);
 }
-std::vector<std::string> split(const std::string& s,
-                               const std::string& delimiter) {
+std::vector<std::string> split(const std::string& s, const std::string& delimiter) {
     size_t pos_start = 0, pos_end, delim_len = delimiter.length();
     std::string token;
     std::vector<std::string> res;
@@ -53,9 +53,8 @@ struct Scene {
     void add_object(Args&&... args) {
         objects.push_back(std::make_shared<T>(std::forward<Args>(args)...));
     }
-    void load_obj(
-        const std::string& filename,
-        const std::unordered_map<std::string, MaterialPtr>& materials) {
+    void load_obj(const std::string& filename,
+                  const std::unordered_map<std::string, MaterialPtr>& materials) {
         std::ifstream file(filename);
         if (!file.is_open()) {
             std::cerr << "Failed to open file " << filename << std::endl;
@@ -74,8 +73,7 @@ struct Scene {
                 vertices.emplace_back(x, y, z);
             } else if (command == "f") {
                 if (materials.find(cur_mat) == materials.end()) {
-                    std::cerr << "Material " << cur_mat << " not found"
-                              << std::endl;
+                    std::cerr << "Material " << cur_mat << " not found" << std::endl;
                     break;
                 }
                 std::string args;
@@ -89,15 +87,12 @@ struct Scene {
                     face_vertices.push_back(vertices[index]);
                 }
                 if (tokens.size() == 3) {
-                    add_object<Triangle>(face_vertices[0], face_vertices[1],
-                                         face_vertices[2],
+                    add_object<Triangle>(face_vertices[0], face_vertices[1], face_vertices[2],
                                          materials.at(cur_mat));
                 } else if (tokens.size() == 4) {
-                    add_object<Triangle>(face_vertices[0], face_vertices[1],
-                                         face_vertices[2],
+                    add_object<Triangle>(face_vertices[0], face_vertices[1], face_vertices[2],
                                          materials.at(cur_mat));
-                    add_object<Triangle>(face_vertices[0], face_vertices[2],
-                                         face_vertices[3],
+                    add_object<Triangle>(face_vertices[0], face_vertices[2], face_vertices[3],
                                          materials.at(cur_mat));
                 }
             } else if (command == "usemtl") {
@@ -109,20 +104,17 @@ struct Scene {
         file.close();
     }
 
-    void render(const Camera& camera, Image& image, int depth = 5,
-                int samples = 1) {
+    void render(const Camera& camera, Image& image, int depth, int samples) {
         std::cout << "Building BVH..." << std::endl;
         bvh_root = build_bvh(objects);
         std::cout << "Done" << std::endl;
-        print_bvh(bvh_root);
 
         std::cout << std::fixed << std::setprecision(2);
         Resolution res = image.res;
         for (int h = 0; h < res.height; h++) {
+            float height_p = (float)h / res.height * 100;
+            std::cout << "\rRendering: " << height_p << "%" << std::flush;
             for (int w = 0; w < res.width; w++) {
-                float percent = (float)(h * res.width + w) /
-                                (res.width * res.height) * 100;
-                std::cout << "\rRendering: " << percent << "%" << std::flush;
                 vec3 ray_o, ray_d;
                 vec3 color = {0, 0, 0};
                 for (int s = 0; s < samples; s++) {
@@ -132,6 +124,48 @@ struct Scene {
                 image.set_pixel(w, h, color / samples);
             }
         }
+    }
+    void run_thread(const Camera& camera, Image& image, int depth, int samples) {
+        Resolution res = image.res;
+        vec3 ray_o, ray_d;
+        for (int h = 0; h < res.height; h++) {
+            for (int w = 0; w < res.width; w++) {
+                vec3 color = {0, 0, 0};
+                for (int s = 0; s < samples; s++) {
+                    camera.get_ray(w, h, ray_o, ray_d);
+                    color += path_trace(ray_o, ray_d, depth);
+                }
+                vec3 prev_color = image.get_pixel(w, h);
+                image.set_pixel(w, h, prev_color + color);
+            }
+        }
+    }
+    void render_threaded(const Camera& camera, Image& image, int depth, int samples, int threads) {
+        // render on multiple threads
+        int max_threads = std::thread::hardware_concurrency();
+        if ((uint)threads > max_threads - 1) {
+            throw std::runtime_error("more than " + std::to_string(max_threads - 1) +
+                                     " threads not supported");
+        }
+
+        std::cout << "Building BVH..." << std::endl;
+        bvh_root = build_bvh(objects);
+        std::cout << "Done" << std::endl;
+
+        std::vector<std::thread> pool(threads);
+        std::vector<Image> images(threads, Image(image.res));
+        std::vector<int> job_count(threads, samples / threads);
+        for (int i = 0; i < samples % threads; i++) {
+            job_count[i]++;
+        }
+
+        for (int i = 0; i < threads; i++) {
+            pool[i] = std::thread(&Scene::run_thread, this, std::ref(camera), std::ref(images[i]),
+                                  depth, job_count[i]);
+        }
+        for (int i = 0; i < threads; i++) pool[i].join();
+        for (const Image& img : images) image.add_layer(img);
+        image.divide(samples);
     }
     ObjectPtr intersect(const vec3& ray_o, const vec3& ray_d, float& hit_t,
                         const ObjectPtr& ignore = nullptr) {
@@ -154,7 +188,7 @@ struct Scene {
 
         float hit_t;
         ObjectPtr hit_obj = intersect_bvh(bvh_root, ray_o, ray_d, hit_t);
-        //ObjectPtr hit_obj = intersect(ray_o, ray_d, hit_t);
+        // ObjectPtr hit_obj = intersect(ray_o, ray_d, hit_t);
         if (!hit_obj) return {0, 0, 0};
 
         if (hit_obj->material->type == EMIT) {
