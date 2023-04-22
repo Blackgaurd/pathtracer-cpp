@@ -1,26 +1,12 @@
-#include <iostream>
-#include <memory>
+#include <string>
 
-#include "camera.h"
-#include "image.h"
-#include "linalg.h"
-#include "material.h"
-#include "object.h"
-#include "scene.h"
+#include "pathtracer/pathtracer.h"
 
 int main() {
-    auto red_diffuse = std::make_shared<Diffuse>(vec3(1, 0, 0));
-    auto white_diffuse = std::make_shared<Diffuse>(vec3(1, 1, 1));
-    auto green_emit = std::make_shared<Emit>(vec3(0, 1, 0));
-    auto green_diffuse = std::make_shared<Diffuse>(vec3(0, 1, 0));
-    auto blue_diffuse = std::make_shared<Diffuse>(vec3(0, 0, 1));
-    auto yellow_diffuse = std::make_shared<Diffuse>(vec3(1, 1, 0));
-    auto white_emit = std::make_shared<Emit>(vec3(1, 1, 1));
-    auto red_emit = std::make_shared<Emit>(vec3(1, 0, 0));
-    auto blue_emit = std::make_shared<Emit>(vec3(0, 0, 1));
-    auto yellow_emit = std::make_shared<Emit>(vec3(1, 1, 0));
-    auto yellow_specular = std::make_shared<Specular>(vec3(1, 1, 0), 0.3);
-    auto white_specular = std::make_shared<Specular>(vec3(1, 1, 1), 0.2);
+    MaterialPtr red_diffuse = std::make_shared<Diffuse>(vec3(1, 0, 0));
+    MaterialPtr white_diffuse = std::make_shared<Diffuse>(vec3(1, 1, 1));
+    MaterialPtr green_diffuse = std::make_shared<Diffuse>(vec3(0, 1, 0));
+    MaterialPtr white_emit = std::make_shared<Emit>(vec3(1, 1, 1));
 
     Scene scene;
     // floor
@@ -108,9 +94,8 @@ int main() {
     Camera camera = Camera(res, 60 * M_PI / 180, 1, look_from, look_at, up);
     Image image = Image(res);
 
-	std::cout << std::thread::hardware_concurrency() << std::endl;
-    //scene.render_threaded(camera, image, 5, 1000, 15);
-    scene.render(camera, image, 5, 100);
+    scene.render_threaded(camera, image, 5, 10000, 10);
     image.gamma_correct(2.2);
-    image.save_png("test_bvh_threaded.png");
+
+    image.save_png("examples/cornell/cornell_box.png");
 }
