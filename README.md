@@ -1,11 +1,14 @@
-# Raytracer
+# Path Tracer
 
-Raytracer written in C++ that supports the following:
+Path tracing algorithm implemented in C++ that supports the following:
 
-- object-oriented design
+- extendable object-oriented design
 - look from/at camera model
 - spheres
-- directional lights
-- point lights
+- triangles
+- lambertian diffuse
+- specular lighting
 - soft shadows
-- indirect lighting
+- BVH acceleration
+- CPU multithreaded rendering
+- OBJ file loading
