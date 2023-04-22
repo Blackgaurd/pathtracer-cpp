@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "linalg.h"
 #include "rng.h"
 
@@ -18,6 +20,8 @@ struct Material {
     virtual ~Material() = default;
     virtual vec3 reflected_dir(const vec3& ray_d, const vec3& normal) const = 0;
 };
+
+using MaterialPtr = std::shared_ptr<Material>;
 
 struct Diffuse : public Material {
     // lambertian diffuse

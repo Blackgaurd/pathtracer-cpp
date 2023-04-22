@@ -8,34 +8,32 @@
 #include "material.h"
 
 struct Object {
-    std::shared_ptr<Material> material;
+    MaterialPtr material;
 
     virtual ~Object() = default;
-    virtual bool intersect(const vec3& ray_o, const vec3& ray_d,
-                           float& t) const = 0;
+    virtual bool intersect(const vec3& ray_o, const vec3& ray_d, float& t) const = 0;
     virtual vec3 normal(const vec3& ray_d, const vec3& p) const = 0;
     virtual vec3 centroid() const = 0;
     virtual AABB aabb() const = 0;
 };
+
+using ObjectPtr = std::shared_ptr<Object>;
 
 struct Sphere : public Object {
     vec3 center;
     float radius;
 
     Sphere() = default;
-    Sphere(const vec3& center, float radius,
-           const std::shared_ptr<Material>& material)
+    Sphere(const vec3& center, float radius, const MaterialPtr& material)
         : center(center), radius(radius) {
         this->material = material;
     }
 
-    bool intersect(const vec3& ray_o, const vec3& ray_d,
-                   float& t) const override {
+    bool intersect(const vec3& ray_o, const vec3& ray_d, float& t) const override {
         // float a = ray_d.dot(ray_d);
         float a = 1;  // assuming ray_d is normalized
         float b = 2 * ray_d.dot(ray_o - center);
-        float c = ray_o.dot(ray_o) + center.dot(center) -
-                  2 * ray_o.dot(center) - radius * radius;
+        float c = ray_o.dot(ray_o) + center.dot(center) - 2 * ray_o.dot(center) - radius * radius;
 
         float d = b * b - 4 * a * c;
         if (d < 0) return false;
@@ -59,14 +57,12 @@ struct Triangle : public Object {
     vec3 v1, v2, v3;
 
     Triangle() = default;
-    Triangle(const vec3& v1, const vec3& v2, const vec3& v3,
-             const std::shared_ptr<Material>& material)
+    Triangle(const vec3& v1, const vec3& v2, const vec3& v3, const MaterialPtr& material)
         : v1(v1), v2(v2), v3(v3) {
         this->material = material;
     }
 
-    bool intersect(const vec3& ray_o, const vec3& ray_d,
-                   float& t) const override {
+    bool intersect(const vec3& ray_o, const vec3& ray_d, float& t) const override {
         // EPS is defined in linalg.h
 
         vec3 edge1 = v2 - v1, edge2 = v3 - v1;

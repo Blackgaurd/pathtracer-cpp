@@ -39,9 +39,6 @@ std::vector<std::string> split(const std::string& s, const std::string& delimite
     return res;
 }
 struct Scene {
-    using ObjectPtr = std::shared_ptr<Object>;
-    using MaterialPtr = std::shared_ptr<Material>;
-
     std::vector<ObjectPtr> objects;
     BVHNodePtr bvh_root;
 
@@ -143,7 +140,7 @@ struct Scene {
     void render_threaded(const Camera& camera, Image& image, int depth, int samples, int threads) {
         // render on multiple threads
         int max_threads = std::thread::hardware_concurrency();
-        if ((uint)threads > max_threads - 1) {
+        if (threads > max_threads - 1) {
             throw std::runtime_error("more than " + std::to_string(max_threads - 1) +
                                      " threads not supported");
         }

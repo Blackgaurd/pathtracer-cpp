@@ -108,15 +108,3 @@ cc_binary(
         ":scene",
     ],
 )
-
-cc_binary(
-    name = "bvh_test",
-    srcs = ["bvh_test.cc"],
-    copts = [
-        "-std=c++17",
-        "-O3",
-    ],
-    deps = [
-        ":bvh",
-    ],
-)
