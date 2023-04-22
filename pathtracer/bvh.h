@@ -20,30 +20,28 @@ BVHNodePtr build_bvh(const std::vector<ObjectPtr>& objects) {
     // n^2 :despair:
     BVHNodePtr cur = std::make_shared<BVHNode>();
 
-    cur->aabb = objects[0]->aabb();
-    for (size_t i = 1; i < objects.size(); i++) cur->aabb = cur->aabb.merge(objects[i]->aabb());
+    cur->aabb = objects[0]->aabb;
+    for (size_t i = 1; i < objects.size(); i++) cur->aabb.merge(objects[i]->aabb);
 
     int best_axis = -1;
     float split_pos = 0, min_cost = 1e30;
     for (int axis = 0; axis < 3; axis++) {
         for (const ObjectPtr& object : objects) {
-            float pos = object->centroid()[axis];
+            float pos = object->centroid[axis];
             int left_cnt = 0, right_cnt = 0;
             AABB left_aabb, right_aabb;
             for (const ObjectPtr& other : objects) {
-                if (other->centroid()[axis] < pos) {
+                if (other->centroid[axis] < pos) {
                     left_cnt++;
-                    left_aabb = left_aabb.merge(other->aabb());
+                    left_aabb.merge(other->aabb);
                 } else {
                     right_cnt++;
-                    right_aabb = right_aabb.merge(other->aabb());
+                    right_aabb.merge(other->aabb);
                 }
             }
-            if (!left_aabb.is_valid() || !right_aabb.is_valid()) {
-                continue;
-            }
+            if (left_cnt == 0 || right_cnt == 0) continue;
             float cost = left_cnt * left_aabb.area() + right_cnt * right_aabb.area();
-            if (cost > 0 && cost < min_cost) {
+            if (cost < min_cost) {
                 min_cost = cost;
                 best_axis = axis;
                 split_pos = pos;
@@ -60,7 +58,7 @@ BVHNodePtr build_bvh(const std::vector<ObjectPtr>& objects) {
 
     std::vector<ObjectPtr> left_objects, right_objects;
     for (const ObjectPtr& object : objects) {
-        if (object->centroid()[best_axis] < split_pos)
+        if (object->centroid[best_axis] < split_pos)
             left_objects.push_back(object);
         else
             right_objects.push_back(object);

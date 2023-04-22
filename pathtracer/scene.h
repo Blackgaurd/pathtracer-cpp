@@ -94,6 +94,7 @@ struct Scene {
         std::cout << "Building BVH..." << std::endl;
         bvh_root = build_bvh(objects);
         std::cout << "Done" << std::endl;
+        //return;
 
         std::cout << std::fixed << std::setprecision(2);
         Resolution res = image.res;

@@ -11,11 +11,11 @@ struct AABB {
     AABB() = default;
     AABB(const vec3& lb, const vec3& rt) : lb(lb), rt(rt) {}
 
-    AABB merge(const AABB& other) const {
-        return AABB(vec3(std::min(lb.x, other.lb.x), std::min(lb.y, other.lb.y),
-                         std::min(lb.z, other.lb.z)),
-                    vec3(std::max(rt.x, other.rt.x), std::max(rt.y, other.rt.y),
-                         std::max(rt.z, other.rt.z)));
+    void merge(const AABB& other) {
+        lb = vec3(std::min(lb.x, other.lb.x), std::min(lb.y, other.lb.y),
+                  std::min(lb.z, other.lb.z));
+        rt = vec3(std::max(rt.x, other.rt.x), std::max(rt.y, other.rt.y),
+                  std::max(rt.z, other.rt.z));
     }
     bool intersect_inv(const vec3& ray_0, const vec3& inv_ray_d) const {
         vec3 t1 = (lb - ray_0) * inv_ray_d;
