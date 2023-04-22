@@ -4,10 +4,11 @@ cc_library(
     name = "fpng",
     srcs = ["fpng.cc"],
     hdrs = ["fpng.h"],
-    copts = [
-        "-DFPNG_NO_SSE",
-        "-w",
-    ],
+    copts =
+        [
+            "-DFPNG_NO_SSE",
+            "-w",
+        ],
     visibility = ["//visibility:private"],
 )
 
@@ -27,99 +28,108 @@ cc_library(
     name = "image",
     hdrs = ["image.h"],
     visibility = ["//visibility:private"],
-    deps = [
-        ":fpng",
-        ":linalg",
-    ],
+    deps =
+        [
+            ":fpng",
+            ":linalg",
+        ],
 )
 
 cc_library(
     name = "camera",
     hdrs = ["camera.h"],
     visibility = ["//visibility:private"],
-    deps = [
-        ":linalg",
-        ":rng",
-    ],
+    deps =
+        [
+            ":linalg",
+            ":rng",
+        ],
 )
 
 cc_library(
     name = "aabb",
     hdrs = ["aabb.h"],
     visibility = ["//visibility:private"],
-    deps = [
-        ":linalg",
-    ],
+    deps =
+        [
+            ":linalg",
+        ],
 )
 
 cc_library(
     name = "material",
     hdrs = ["material.h"],
     visibility = ["//visibility:private"],
-    deps = [
-        ":linalg",
-        ":rng",
-    ],
+    deps =
+        [
+            ":linalg",
+            ":rng",
+        ],
 )
 
 cc_library(
     name = "object",
     hdrs = ["object.h"],
     visibility = ["//visibility:private"],
-    deps = [
-        ":linalg",
-        ":material",
-    ],
+    deps =
+        [
+            ":linalg",
+            ":material",
+        ],
 )
 
 cc_library(
     name = "scene",
     hdrs = ["scene.h"],
     visibility = ["//visibility:private"],
-    deps = [
-        ":bvh",
-        ":camera",
-        ":image",
-        ":linalg",
-        ":material",
-        ":object",
-    ],
+    deps =
+        [
+            ":bvh",
+            ":camera",
+            ":image",
+            ":linalg",
+            ":material",
+            ":object",
+        ],
 )
 
 cc_library(
     name = "bvh",
     hdrs = ["bvh.h"],
     visibility = ["//visibility:private"],
-    deps = [
-        ":aabb",
-        ":linalg",
-        ":object",
-    ],
+    deps =
+        [
+            ":aabb",
+            ":linalg",
+            ":object",
+        ],
 )
 
 cc_library(
     name = "pathtracer",
     hdrs = ["pathtracer.h"],
     visibility = ["//visibility:public"],
-    deps = [
-        ":bvh",
-        ":camera",
-        ":image",
-        ":linalg",
-        ":material",
-        ":object",
-        ":rng",
-        ":scene",
-    ],
+    deps =
+        [
+            ":bvh",
+            ":camera",
+            ":image",
+            ":linalg",
+            ":material",
+            ":object",
+            ":rng",
+            ":scene",
+        ],
 )
 
 cc_binary(
     name = "test_scene",
     srcs = ["test_scene.cc"],
-    copts = [
-        "-std=c++17",
-        "-O3",
-    ],
+    copts =
+        [
+            "-std=c++17",
+            "-O3",
+        ],
     deps = [
         ":pathtracer",
     ],

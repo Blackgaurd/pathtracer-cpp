@@ -38,8 +38,8 @@ struct Diffuse : public Material {
         float u = rng.rand01(), v = rng.rand01();
         float theta = std::acos(2 * u - 1) - M_PI_2;
         float phi = 2 * M_PI * v;
-        vec3 sample = {std::cos(theta) * std::cos(phi),
-                       std::cos(theta) * std::sin(phi), std::sin(theta)};
+        vec3 sample = {std::cos(theta) * std::cos(phi), std::cos(theta) * std::sin(phi),
+                       std::sin(theta)};
         return sample.dot(normal) < 0 ? -sample : sample;
     }
 };

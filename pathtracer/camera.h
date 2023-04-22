@@ -20,8 +20,8 @@ struct Camera {
     mat4 transform;
 
     Camera() = default;
-    Camera(const Resolution& resolution, float fov, float image_distance,
-           const vec3& look_from, const vec3& look_at, const vec3& up)
+    Camera(const Resolution& resolution, float fov, float image_distance, const vec3& look_from,
+           const vec3& look_at, const vec3& up)
         : res(resolution),
           image_distance(image_distance),
           look_from(look_from),
@@ -53,16 +53,15 @@ struct Camera {
 #undef set_row
 
         v_res = {2.0f * image_distance * std::tan(fov / 2),
-                 2.0f * image_distance * std::tan(fov / 2) *
-                     static_cast<float>(resolution.height) / resolution.width};
+                 2.0f * image_distance * std::tan(fov / 2) * static_cast<float>(resolution.height) /
+                     resolution.width};
         cell_size = v_res.width / resolution.width;
     }
 
     void get_ray(int w, int h, vec3& ray_o, vec3& ray_d) const {
         float jitter_w = rng.rand01() * cell_size, jitter_h = rng.rand01() * cell_size;
         ray_d = {w * cell_size - v_res.width / 2 + jitter_w,
-                 h * cell_size - v_res.height / 2 + jitter_h,
-                 -image_distance};
+                 h * cell_size - v_res.height / 2 + jitter_h, -image_distance};
         ray_d = transform.transform_dir(ray_d).normalize();
         ray_o = look_from;
     }

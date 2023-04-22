@@ -5,9 +5,9 @@ static_assert(__cplusplus >= 201703L, "C++17 required");
 
 #include <array>
 #include <cmath>
-#include <stdexcept>
 #include <functional>
 #include <iostream>
+#include <stdexcept>
 
 #ifndef NO_ROW_MAJOR
 #define ROW_MAJOR
@@ -35,22 +35,28 @@ struct vec3 {
     vec3(float v) : x(v), y(v), z(v) {}
     vec3(float x, float y, float z) : x(x), y(y), z(z) {}
 
-#define vec3_op(op)                                                                      \
-    vec3 operator op(const vec3& o) const { return vec3(x op o.x, y op o.y, z op o.z); } \
-    vec3& operator op##=(const vec3& o) {                                                \
-        x op## = o.x;                                                                    \
-        y op## = o.y;                                                                    \
-        z op## = o.z;                                                                    \
-        return *this;                                                                    \
-    }                                                                                    \
-    vec3 operator op(float o) const { return vec3(x op o, y op o, z op o); }             \
-    vec3& operator op##=(float o) {                                                      \
-        x op## = o;                                                                      \
-        y op## = o;                                                                      \
-        z op## = o;                                                                      \
-        return *this;                                                                    \
-    }                                                                                    \
-    friend vec3 operator op(float o, const vec3& v) { return vec3(o op v.x, o op v.y, o op v.z); }
+#define vec3_op(op)                                   \
+    vec3 operator op(const vec3& o) const {           \
+        return vec3(x op o.x, y op o.y, z op o.z);    \
+    }                                                 \
+    vec3& operator op##=(const vec3& o) {             \
+        x op## = o.x;                                 \
+        y op## = o.y;                                 \
+        z op## = o.z;                                 \
+        return *this;                                 \
+    }                                                 \
+    vec3 operator op(float o) const {                 \
+        return vec3(x op o, y op o, z op o);          \
+    }                                                 \
+    vec3& operator op##=(float o) {                   \
+        x op## = o;                                   \
+        y op## = o;                                   \
+        z op## = o;                                   \
+        return *this;                                 \
+    }                                                 \
+    friend vec3 operator op(float o, const vec3& v) { \
+        return vec3(o op v.x, o op v.y, o op v.z);    \
+    }
 
     vec3_op(+);
     vec3_op(-);
