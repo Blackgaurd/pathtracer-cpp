@@ -106,7 +106,7 @@ struct Scene {
                 vec3 color = {0, 0, 0};
                 for (int s = 0; s < samples; s++) {
                     camera.get_ray(w, h, ray_o, ray_d);
-                    color += path_trace_iter(ray_o, ray_d, depth);
+                    color += path_trace(ray_o, ray_d, depth);
                 }
                 image.set_pixel(w, h, color / samples);
             }
@@ -120,7 +120,7 @@ struct Scene {
                 vec3 color = {0, 0, 0};
                 for (int s = 0; s < samples; s++) {
                     camera.get_ray(w, h, ray_o, ray_d);
-                    color += path_trace_iter(ray_o, ray_d, depth);
+                    color += path_trace(ray_o, ray_d, depth);
                 }
                 vec3 prev_color = image.get_pixel(w, h);
                 image.set_pixel(w, h, prev_color + color);
@@ -195,39 +195,5 @@ struct Scene {
 
         // idk where the 2 comes from
         return emission + 2 * rec_color * surface_color * theta;
-    }
-    vec3 path_trace_iter(const vec3& ray_o, const vec3& ray_d, int depth) {
-        // iterative path tracing
-        vec3 color = {0, 0, 0};
-        vec3 ray_origin = ray_o;
-        vec3 ray_direction = ray_d;
-        for (int i = 0; i < depth; i++) {
-            float hit_t;
-            ObjectPtr hit_obj = intersect_bvh(bvh_root, ray_origin, ray_direction, hit_t);
-            if (!hit_obj) break;
-
-            if (hit_obj->material->type == EMIT) {
-                color += hit_obj->material->emission;
-                break;
-            }
-
-            vec3 hit_p = ray_origin + ray_direction * hit_t;
-            vec3 hit_n = hit_obj->normal(ray_direction, hit_p);
-            vec3 bias = hit_n * shift_bias;
-
-            vec3 new_d = hit_obj->material->reflected_dir(ray_direction, hit_n);
-            vec3 new_o = hit_p + bias;
-
-            vec3 emission = hit_obj->material->emission;
-            vec3 surface_color = hit_obj->material->color;
-            float theta = hit_n.dot(new_d);
-
-            // idk where the 2 comes from
-            color += emission + 2 * surface_color * theta;
-
-            ray_origin = new_o;
-            ray_direction = new_d;
-        }
-        return color;
     }
 };
