@@ -86,7 +86,7 @@ struct Triangle : public Object {
         if (v < 0 || u + v > 1) return false;
 
         t = f * edge2.dot(q);
-        return t > EPS;
+        return t > 0;
     }
     vec3 normal(const vec3& ray_d, const vec3& p) const override {
         vec3 edge1 = v2 - v1, edge2 = v3 - v1;

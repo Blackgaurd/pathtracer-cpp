@@ -94,7 +94,7 @@ struct Scene {
         std::cout << "Building BVH..." << std::endl;
         bvh_root = build_bvh(objects);
         std::cout << "Done" << std::endl;
-        //return;
+        // return;
 
         std::cout << std::fixed << std::setprecision(2);
         Resolution res = image.res;
@@ -195,5 +195,41 @@ struct Scene {
 
         // idk where the 2 comes from
         return emission + 2 * rec_color * surface_color * theta;
+    }
+    vec3 path_trace_iter(vec3 ray_o, vec3 ray_d, int depth) {
+        struct TraceResult {
+            vec3 color, emit;
+            float theta;
+        };
+        std::vector<TraceResult> stack(depth);
+        int stack_ptr = 0;
+
+        for (int d = 0; d < depth; d++) {
+            float hit_t = 1e30;
+            ObjectPtr hit_obj = intersect_bvh(bvh_root, ray_o, ray_d, hit_t);
+
+            if (!hit_obj) break;
+            if (hit_obj->material->type == EMIT) {
+                stack[stack_ptr++] = {hit_obj->material->color, hit_obj->material->emission, 0};
+                break;
+            }
+
+            vec3 hit_p = ray_o + ray_d * hit_t;
+            vec3 hit_n = hit_obj->normal(ray_d, hit_p);
+            vec3 bias = hit_n * shift_bias;
+
+            ray_o = hit_p + bias;
+            ray_d = hit_obj->material->reflected_dir(ray_d, hit_n);
+            float theta = hit_n.dot(ray_d);
+            stack[stack_ptr++] = {hit_obj->material->color, hit_obj->material->emission, theta};
+        }
+
+        vec3 color = {0, 0, 0};
+        for (stack_ptr--; stack_ptr >= 0; stack_ptr--) {
+            TraceResult& result = stack[stack_ptr];
+            color = result.emit + 2 * color * result.color * result.theta;
+        }
+
+        return color;
     }
 };

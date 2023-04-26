@@ -34,3 +34,17 @@ And to run the executable:
 ```bash
 ./bazel-bin/examples/example-name
 ```
+
+## To Do
+
+- importance base sampling with BRDF instead of uniform and random
+- explicit light sampling [here](https://computergraphics.stackexchange.com/questions/5152/progressive-path-tracing-with-explicit-light-sampling/5153#5153?newreg=ba3a51d61bf64da5a1b3a589287511b2)
+  - punctual (point) light sources
+  - light attenuation
+- skybox
+
+maybe:
+
+- russian roulette
+- python port
+- GPU support with glsl

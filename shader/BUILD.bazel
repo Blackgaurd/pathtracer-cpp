@@ -1,0 +1,22 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+
+cc_library(
+    name = "sfml_linalg",
+    hdrs = ["sfml_linalg.h"],
+    visibility = ["//visibility:private"],
+)
+
+cc_binary(
+    name = "window",
+    srcs = ["window.cc"],
+    deps = [":sfml_linalg"],
+    copts = [
+        "-std=c++17",
+        "-O3",
+    ],
+    linkopts = [
+        "-lsfml-graphics",
+        "-lsfml-window",
+        "-lsfml-system",
+    ]
+)
