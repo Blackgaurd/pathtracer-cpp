@@ -7,83 +7,157 @@
 
 #include "sfml_linalg.h"
 
+#define DEG2RAD M_PI / 180
+
 using mat4 = sf::Glsl::Mat4;
 using vec3 = sf::Glsl::Vec3;
 using vec4 = sf::Glsl::Vec4;
 using vec2 = sf::Glsl::Vec2;
 using ivec2 = sf::Glsl::Ivec2;
 
+std::ostream& operator<<(std::ostream& os, const vec3& v) {
+    os << "(" << v.x << ", " << v.y << ", " << v.z << ")";
+    return os;
+}
+std::ostream& operator<<(std::ostream& os, const std::array<float, 16>& mat) {
+    // print like this
+    // 1 2 3 4
+    // 5 6 7 8
+
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            os << mat[i * 4 + j] << ' ';
+        }
+        os << '\n';
+    }
+    return os;
+}
+
 struct Camera {
+    // i do not understand quaternions
+    enum Direction {
+        FORWARD,
+        BACKWARD,
+        LEFT,
+        RIGHT,
+        UP,
+        DOWN,
+    };
+
     ivec2 res;
     vec2 v_res;
-    float fov, image_distance;
-    vec3 look_from, look_at, up;
+    float fov, distance;
+    vec3 pos;
+    vec3 forward, up, right;  // centered about origin
+    vec3 const_up;            // used for rotating
     std::array<float, 16> transform;
 
+#define set_row(row, vec)           \
+    transform[row * 4] = vec.x;     \
+    transform[row * 4 + 1] = vec.y; \
+    transform[row * 4 + 2] = vec.z;
+
     Camera() = default;
-    Camera(const ivec2& res, float fov, float image_distance, const vec3& look_from,
-           const vec3& look_at, const vec3& up)
-        : res(res),
-          fov(fov),
-          image_distance(image_distance),
-          look_from(look_from),
-          look_at(look_at),
-          up(up) {
-        vec3 forward = normalize(look_from - look_at);
+    Camera(const vec3& pos, const vec3& forward, const vec3& up, const ivec2& res, float fov,
+           float distance) {
+        this->pos = pos;
+        this->forward = normalize(forward);
+        this->right = normalize(cross(forward, up));
+        this->up = normalize(cross(right, forward));
+        this->const_up = this->up;
+
         if (std::abs(dot(forward, up)) > 0.999) {
             std::cerr << "Up vector is too close to forward vector" << std::endl;
             return;
         }
-        vec3 left = normalize(cross(up, forward));
-        vec3 true_up = normalize(cross(forward, left));
+
+        this->res = res;
+        this->fov = fov;
+        this->distance = distance;
+        v_res = {2 * distance * std::tan(fov / 2),
+                 2 * distance * std::tan(fov / 2) * res.y / res.x};
 
         for (int i = 0; i < 4; i++) transform[i * 4 + i] = 1;
 
-#define set_row(row, vec)           \
-    transform[row * 4] = vec.x;     \
-    transform[row * 4 + 1] = vec.y; \
-    transform[row * 4 + 2] = vec.z;
-
-        set_row(0, left);
-        set_row(1, true_up);
-        set_row(2, forward);
-        set_row(3, look_from);
-#undef set_row
-
-        float fov_rad = fov * M_PI / 180;
-        v_res = {2 * image_distance * std::tan(fov_rad / 2),
-                 2 * image_distance * std::tan(fov_rad / 2) * res.y / res.x};
+        set_row(0, this->right);
+        set_row(1, this->up);
+        set_row(2, -this->forward);
+        set_row(3, this->pos);
     }
 
-    void update_view(const vec3& look_from, const vec3& look_at, const vec3& up) {
-        this->look_from = look_from;
-        this->look_at = look_at;
-        this->up = up;
-        vec3 forward = normalize(look_from - look_at);
-        if (std::abs(dot(forward, up)) > 0.999) {
-            std::cerr << "Up vector is too close to forward vector" << std::endl;
-            return;
+    // rotation and movement inspire
+    // by games like minecraft
+    void rotate(Direction dir, float angle) {
+        switch (dir) {
+            case LEFT: {
+                forward = normalize(forward * std::cos(angle) - right * std::sin(angle));
+                right = normalize(cross(forward, const_up));
+                up = normalize(cross(right, forward));
+                break;
+            }
+            case RIGHT: {
+                forward = normalize(forward * std::cos(angle) + right * std::sin(angle));
+                right = normalize(cross(forward, const_up));
+                up = normalize(cross(right, forward));
+                break;
+            }
+            case UP: {
+                forward = normalize(forward * std::cos(angle) + up * std::sin(angle));
+                up = normalize(cross(right, forward));
+                break;
+            }
+            case DOWN: {
+                forward = normalize(forward * std::cos(angle) - up * std::sin(angle));
+                up = normalize(cross(right, forward));
+                break;
+            }
+            default:
+                break;
         }
-        vec3 left = normalize(cross(up, forward));
-        vec3 true_up = normalize(cross(forward, left));
-
-        for (int i = 0; i < 4; i++) transform[i * 4 + i] = 1;
-
-#define set_row(row, vec)           \
-    transform[row * 4] = vec.x;     \
-    transform[row * 4 + 1] = vec.y; \
-    transform[row * 4 + 2] = vec.z;
-
-        set_row(0, left);
-        set_row(1, true_up);
-        set_row(2, forward);
-        set_row(3, look_from);
-#undef set_row
+        set_row(0, right);
+        set_row(1, up);
+        set_row(2, -forward);
     }
+    void move(Direction dir, float amount) {
+        // according to const_up
+        switch (dir) {
+            case UP: {
+                pos += const_up * amount;
+                break;
+            }
+            case DOWN: {
+                pos -= const_up * amount;
+                break;
+            }
+            case FORWARD: {
+                vec3 const_forward = normalize(cross(const_up, right));
+                pos += const_forward * amount;
+                break;
+            }
+            case BACKWARD: {
+                vec3 const_forward = normalize(cross(const_up, right));
+                pos -= const_forward * amount;
+                break;
+            }
+            case LEFT: {
+                pos -= right * amount;
+                break;
+            }
+            case RIGHT: {
+                pos += right * amount;
+                break;
+            }
+            default:
+                break;
+        }
+        set_row(3, pos);
+    }
+#undef set_row
 };
 
 struct Material {
     enum Type {
+        // hard coded to match the shader
         EMIT = 1,
         DIFF = 2,
         SPEC = 3,
@@ -118,8 +192,9 @@ int main() {
     sf::Shader pathtracer;
     if (!load_shader("shader/pathtracer.frag", pathtracer)) return 1;
 
-    vec3 look_from = {0, 0, 0}, look_at = {0, 0, -1}, up = {0, 1, 0};
-    Camera camera(resolution, 60, 1, look_from, look_at, up);
+    vec3 pos = {0, 0, 0}, forward = {0, 0, -1}, b_up = {0, 1, 0};
+    Camera camera(pos, forward, b_up, resolution, 60 * DEG2RAD, 1);
+
     const int sphere_count = 6;
     const Sphere spheres[sphere_count] = {
         Sphere{{0, 0, -3}, 0.5, {Material::DIFF, {0.8, 0.8, 0.8}, {0, 0, 0}, 0}},
@@ -155,8 +230,8 @@ int main() {
     std::chrono::high_resolution_clock::time_point prev_time =
         std::chrono::high_resolution_clock::now();
     while (window.isOpen()) {
-        bool camera_changed = false;
         sf::Event event;
+        bool camera_changed = false;
         while (window.pollEvent(event)) {
             switch (event.type) {
                 case sf::Event::Closed: {
@@ -164,66 +239,66 @@ int main() {
                     break;
                 }
                 case sf::Event::KeyPressed: {
-                    bool update_camera = false;
                     switch (event.key.code) {
                         case sf::Keyboard::Escape: {
                             window.close();
                             break;
                         }
-
-                        // pan camera
-                        case sf::Keyboard::Up: {
-                            look_at.y += 0.01;
-                            update_camera = true;
-                            break;
-                        }
-                        case sf::Keyboard::Down: {
-                            look_at.y -= 0.01;
-                            update_camera = true;
+                        // rotate with arrow keys
+                        case sf::Keyboard::Left: {
+                            camera.rotate(Camera::LEFT, 1 * DEG2RAD);
+                            camera_changed = true;
                             break;
                         }
                         case sf::Keyboard::Right: {
-                            look_at.x += 0.01;
-                            update_camera = true;
+                            camera.rotate(Camera::RIGHT, 1 * DEG2RAD);
+                            camera_changed = true;
                             break;
                         }
-                        case sf::Keyboard::Left: {
-                            look_at.x -= 0.01;
-                            update_camera = true;
+                        case sf::Keyboard::Up: {
+                            camera.rotate(Camera::UP, 1 * DEG2RAD);
+                            camera_changed = true;
                             break;
                         }
-
-                        // move camera
+                        case sf::Keyboard::Down: {
+                            camera.rotate(Camera::DOWN, 1 * DEG2RAD);
+                            camera_changed = true;
+                            break;
+                        }
+                        // move with wasd space z
                         case sf::Keyboard::W: {
-                            look_from.z -= 0.01;
-                            look_at.z -= 0.01;
-                            update_camera = true;
+                            camera.move(Camera::FORWARD, 0.1);
+                            camera_changed = true;
                             break;
                         }
                         case sf::Keyboard::S: {
-                            look_from.z += 0.01;
-                            look_at.z += 0.01;
-                            update_camera = true;
+                            camera.move(Camera::BACKWARD, 0.1);
+                            camera_changed = true;
                             break;
                         }
                         case sf::Keyboard::A: {
-                            look_from.x -= 0.01;
-                            look_at.x -= 0.01;
-                            update_camera = true;
+                            camera.move(Camera::LEFT, 0.1);
+                            camera_changed = true;
                             break;
                         }
                         case sf::Keyboard::D: {
-                            look_from.x += 0.01;
-                            look_at.x += 0.01;
-                            update_camera = true;
+                            camera.move(Camera::RIGHT, 0.1);
+                            camera_changed = true;
+                            break;
+                        }
+                        case sf::Keyboard::Space: {
+                            camera.move(Camera::UP, 0.1);
+                            camera_changed = true;
+                            break;
+                        }
+                        case sf::Keyboard::Z: {
+                            camera.move(Camera::DOWN, 0.1);
+                            camera_changed = true;
                             break;
                         }
                         default:
                             break;
                     }
-                    if (!update_camera) break;
-                    camera.update_view(look_from, look_at, up);
-                    camera_changed = true;
                     break;
                 }
                 default:
@@ -234,9 +309,9 @@ int main() {
         pathtracer.setUniform("frame_count", frame_count++);
         pathtracer.setUniform("prev_frame", texture.getTexture());
 
-        pathtracer.setUniform("look_from", look_from);
+        pathtracer.setUniform("look_from", camera.pos);
         pathtracer.setUniform("v_res", camera.v_res);
-        pathtracer.setUniform("image_distance", camera.image_distance);
+        pathtracer.setUniform("image_distance", camera.distance);
         pathtracer.setUniform("camera", mat4(camera.transform.data()));
 
         if (camera_changed) {
