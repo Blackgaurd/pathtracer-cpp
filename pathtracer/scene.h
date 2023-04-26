@@ -16,7 +16,7 @@
 #include "tiny_obj_loader.h"
 
 struct Scene {
-    std::vector<ObjectPtr> objects;
+    std::vector<ObjectPtr> objects, bvh_objects;
     BVHNodePtr bvh_root;
 
     float shift_bias = 1e-4;
@@ -24,7 +24,13 @@ struct Scene {
     Scene() = default;
 
     template <typename T, typename... Args>
+    void bvh_add_object(Args&&... args) {
+        // add an object to be accelerated by the BVH
+        bvh_objects.push_back(std::make_shared<T>(std::forward<Args>(args)...));
+    }
+    template <typename T, typename... Args>
     void add_object(Args&&... args) {
+        // add an object to the scene (not accelerated by the BVH)
         objects.push_back(std::make_shared<T>(std::forward<Args>(args)...));
     }
     void load_obj(const std::string& filename, const std::string& mtl_path = "./") {
@@ -83,7 +89,7 @@ struct Scene {
                     }
                 }
 
-                add_object<Triangle>(points[0], points[1], points[2], material);
+                bvh_add_object<Triangle>(points[0], points[1], points[2], material);
             }
         }
     }
@@ -92,7 +98,7 @@ struct Scene {
         if (objects.empty()) throw std::runtime_error("no objects in scene");
 
         std::cout << "Building BVH..." << std::endl;
-        bvh_root = build_bvh(objects);
+        bvh_root = build_bvh(bvh_objects);
         std::cout << "Done" << std::endl;
         // return;
 
@@ -138,7 +144,7 @@ struct Scene {
         }
 
         std::cout << "Building BVH..." << std::endl;
-        bvh_root = build_bvh(objects);
+        bvh_root = build_bvh(bvh_objects);
         std::cout << "Done" << std::endl;
 
         std::vector<std::thread> pool(threads);
@@ -155,26 +161,45 @@ struct Scene {
     }
     ObjectPtr intersect(const vec3& ray_o, const vec3& ray_d, float& hit_t,
                         const ObjectPtr& ignore = nullptr) {
-        // brute force intersection
+        float bvh_t;
+        ObjectPtr bvh_hit_obj = intersect_bvh(bvh_root, ray_o, ray_d, hit_t, ignore);
+
+        float bf_t;  // brute force
         ObjectPtr hit_obj = nullptr;
         hit_t = 1e30;
         for (ObjectPtr& obj : objects) {
             if (obj == ignore) continue;
 
             float t;
-            if (obj->intersect(ray_o, ray_d, t) && t < hit_t) {
-                hit_t = t;
+            if (obj->intersect(ray_o, ray_d, t) && t < bf_t) {
+                bf_t = t;
                 hit_obj = obj;
             }
         }
-        return hit_obj;
+
+        if (bvh_hit_obj && hit_obj) {
+            if (bvh_t < bf_t) {
+                hit_t = bvh_t;
+                return bvh_hit_obj;
+            } else {
+                hit_t = bf_t;
+                return hit_obj;
+            }
+        } else if (bvh_hit_obj) {
+            hit_t = bvh_t;
+            return bvh_hit_obj;
+        } else if (hit_obj) {
+            hit_t = bf_t;
+            return hit_obj;
+        }
+        return nullptr;
     }
     vec3 path_trace(const vec3& ray_o, const vec3& ray_d, int depth) {
         // recursive path tracing
         if (depth == 0) return {0, 0, 0};
 
         float hit_t;
-        ObjectPtr hit_obj = intersect_bvh(bvh_root, ray_o, ray_d, hit_t);
+        ObjectPtr hit_obj = intersect(ray_o, ray_d, hit_t);
         if (!hit_obj) return {0, 0, 0};
 
         if (hit_obj->material->type == EMIT) {
