@@ -166,9 +166,8 @@ struct Material {
     vec3 emit_color;
     float roughness;
 };
-struct Sphere {
-    vec3 center;
-    float radius;
+struct Triangle {
+    vec3 v1, v2, v3;
     Material material;
 };
 
@@ -192,28 +191,72 @@ int main() {
     sf::Shader pathtracer;
     if (!load_shader("shader/pathtracer.frag", pathtracer)) return 1;
 
-    vec3 pos = {0, 0, 0}, forward = {0, 0, -1}, b_up = {0, 1, 0};
+    vec3 pos = {278, 278, -500}, forward = {0, 0, 1}, b_up = {0, 1, 0};
     Camera camera(pos, forward, b_up, resolution, 60 * DEG2RAD, 1);
 
-    const int sphere_count = 6;
-    const Sphere spheres[sphere_count] = {
-        Sphere{{0, 0, -3}, 0.5, {Material::DIFF, {0.8, 0.8, 0.8}, {0, 0, 0}, 0}},
-        Sphere{{0, 0, -3}, 0.1, {Material::EMIT, {0, 0, 0}, {1, 1, 1}, 0}},
-        Sphere{{1, 1, -2}, 0.5, {Material::EMIT, {0, 0, 0}, {1, 1, 0}, 0}},
-        Sphere{{-1, -1, -2}, 0.5, {Material::EMIT, {0, 0, 0}, {0, 1, 1}, 0}},
-        Sphere{{1, -1, -2}, 0.5, {Material::EMIT, {0, 0, 0}, {0, 1, 0}, 0}},
-        Sphere{{-1, 1, -2}, 0.5, {Material::EMIT, {0, 0, 0}, {1, 0, 0}, 0}}};
-    pathtracer.setUniform("sphere_count", sphere_count);
-    for (int i = 0; i < sphere_count; i++) {
-        std::string name = "spheres[" + std::to_string(i) + "].";
-        pathtracer.setUniform(name + "center", spheres[i].center);
-        pathtracer.setUniform(name + "radius", spheres[i].radius);
+    Material red_diffuse = {Material::DIFF, {1, 0, 0}, {0, 0, 0}, 0};
+    Material green_diffuse = {Material::DIFF, {0, 1, 0}, {0, 0, 0}, 0};
+    Material white_diffuse = {Material::DIFF, {1, 1, 1}, {0, 0, 0}, 0};
+    Material white_emit = {Material::EMIT, {0, 0, 0}, {1, 1, 1}, 0};
 
+    std::vector<Triangle> triangles;
+    vec3 f1 = vec3(552.8, 0, 0), f2 = vec3(0, 0, 0), f3 = vec3(0, 0, 559.2),
+         f4 = vec3(549.6, 0, 559.2);
+    triangles.push_back(Triangle{f1, f2, f3, white_diffuse});
+    triangles.push_back(Triangle{f4, f3, f1, white_diffuse});
+    vec3 l1 = vec3(343, 548.7, 227), l2 = vec3(343, 548.7, 332), l3 = vec3(213, 548.7, 332),
+         l4 = vec3(213, 548.7, 227);
+    triangles.push_back(Triangle{l1, l2, l3, white_emit});
+    triangles.push_back(Triangle{l4, l3, l1, white_emit});
+    vec3 c1 = vec3(556, 548.8, 0), c2 = vec3(0, 548.8, 0), c3 = vec3(0, 548.8, 559.2),
+         c4 = vec3(556.0, 548.8, 559.2);
+    triangles.push_back(Triangle{c1, c2, c3, white_diffuse});
+    triangles.push_back(Triangle{c4, c3, c1, white_diffuse});
+    vec3 b1 = vec3(549.6, 0, 559.2), b2 = vec3(0, 0, 559.2), b3 = vec3(0, 548.8, 559.2),
+         b4 = vec3(556, 548.8, 559.2);
+    triangles.push_back(Triangle{b1, b2, b3, white_diffuse});
+    triangles.push_back(Triangle{b4, b3, b1, white_diffuse});
+    vec3 r1 = vec3(0, 0, 559.2), r2 = vec3(0, 0, 0), r3 = vec3(0, 548.8, 0),
+         r4 = vec3(0, 548.8, 559.2);
+    triangles.push_back(Triangle{r1, r2, r3, green_diffuse});
+    triangles.push_back(Triangle{r4, r3, r1, green_diffuse});
+    vec3 lw1 = vec3(552.8, 0, 0), lw2 = vec3(549.6, 0, 559.2), lw3 = vec3(556, 548.8, 559.2),
+         lw4 = vec3(556, 548.8, 0);
+    triangles.push_back(Triangle{lw1, lw2, lw3, red_diffuse});
+    triangles.push_back(Triangle{lw4, lw3, lw1, red_diffuse});
+    vec3 sb1 = vec3(130, 165, 65), sb2 = vec3(82, 165, 225), sb3 = vec3(240, 165, 272),
+         sb4 = vec3(290, 165, 114);
+    triangles.push_back(Triangle{sb1, sb2, sb3, white_diffuse});
+    triangles.push_back(Triangle{sb4, sb3, sb1, white_diffuse});
+    vec3 sb5 = vec3(290, 0, 114), sb6 = vec3(290, 165, 114), sb7 = vec3(240, 165, 272),
+         sb8 = vec3(240, 0, 272);
+    triangles.push_back(Triangle{sb5, sb6, sb7, white_diffuse});
+    triangles.push_back(Triangle{sb8, sb7, sb5, white_diffuse});
+    vec3 sb9 = vec3(130, 0, 65), sb10 = vec3(130, 165, 65), sb11 = vec3(290, 165, 114),
+         sb12 = vec3(290, 0, 114);
+    triangles.push_back(Triangle{sb9, sb10, sb11, white_diffuse});
+    triangles.push_back(Triangle{sb12, sb11, sb9, white_diffuse});
+    vec3 sb13 = vec3(82, 0, 225), sb14 = vec3(82, 165, 225), sb15 = vec3(130, 165, 65),
+         sb16 = vec3(130, 0, 65);
+    triangles.push_back(Triangle{sb13, sb14, sb15, white_diffuse});
+    triangles.push_back(Triangle{sb16, sb15, sb13, white_diffuse});
+    vec3 sb17 = vec3(240, 0, 272), sb18 = vec3(240, 165, 272), sb19 = vec3(82, 165, 225),
+         sb20 = vec3(82, 0, 225);
+    triangles.push_back(Triangle{sb17, sb18, sb19, white_diffuse});
+    triangles.push_back(Triangle{sb20, sb19, sb17, white_diffuse});
+
+    int triangle_count = triangles.size();
+    pathtracer.setUniform("triangle_count", triangle_count);
+    for (int i = 0; i < triangle_count; i++) {
+        std::string name = "triangles[" + std::to_string(i) + "].";
+        pathtracer.setUniform(name + "v1", triangles[i].v1);
+        pathtracer.setUniform(name + "v2", triangles[i].v2);
+        pathtracer.setUniform(name + "v3", triangles[i].v3);
         name += "material.";
-        pathtracer.setUniform(name + "type", spheres[i].material.type);
-        pathtracer.setUniform(name + "color", spheres[i].material.color);
-        pathtracer.setUniform(name + "emit_color", spheres[i].material.emit_color);
-        pathtracer.setUniform(name + "roughness", spheres[i].material.roughness);
+        pathtracer.setUniform(name + "type", triangles[i].material.type);
+        pathtracer.setUniform(name + "color", triangles[i].material.color);
+        pathtracer.setUniform(name + "emit_color", triangles[i].material.emit_color);
+        pathtracer.setUniform(name + "roughness", triangles[i].material.roughness);
     }
 
     const int FPS = 24;
@@ -229,9 +272,9 @@ int main() {
     std::cout << std::fixed << std::setprecision(2);
     std::chrono::high_resolution_clock::time_point prev_time =
         std::chrono::high_resolution_clock::now();
+    bool camera_changed = true;
     while (window.isOpen()) {
         sf::Event event;
-        bool camera_changed = false;
         while (window.pollEvent(event)) {
             switch (event.type) {
                 case sf::Event::Closed: {
@@ -309,14 +352,14 @@ int main() {
         pathtracer.setUniform("frame_count", frame_count++);
         pathtracer.setUniform("prev_frame", texture.getTexture());
 
-        pathtracer.setUniform("look_from", camera.pos);
-        pathtracer.setUniform("v_res", camera.v_res);
-        pathtracer.setUniform("image_distance", camera.distance);
-        pathtracer.setUniform("camera", mat4(camera.transform.data()));
-
         if (camera_changed) {
+            pathtracer.setUniform("look_from", camera.pos);
+            pathtracer.setUniform("v_res", camera.v_res);
+            pathtracer.setUniform("image_distance", camera.distance);
+            pathtracer.setUniform("camera", mat4(camera.transform.data()));
             texture.clear();
             frame_count = 0;
+            camera_changed = false;
         }
         texture.draw(screen, &pathtracer);
         texture.display();

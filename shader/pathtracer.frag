@@ -20,21 +20,12 @@ struct Material {
     vec3 emit_color;
     float roughness;
 };
-struct Sphere {
-    vec3 center;
-    float radius;
-    Material material;
-};
 struct Triangle {
     vec3 v1, v2, v3;
     Material material;
 };
 
-#define MAX_SPHERES 10
-uniform int sphere_count;
-uniform Sphere spheres[MAX_SPHERES];
-
-#define MAX_TRIANGLES 5
+#define MAX_TRIANGLES 30
 uniform int triangle_count;
 uniform Triangle triangles[MAX_TRIANGLES];
 
@@ -55,25 +46,6 @@ float rand01(inout uint state) {
     state *= 2654435769u;
     //state = (state * 196314165u) + 907633515u;
     return float(state) / 4294967295.0;
-}
-
-bool i_sphere(vec3 ray_o, vec3 ray_d, int sphere_idx, out float t) {
-    vec3 center = spheres[sphere_idx].center;
-    float radius = spheres[sphere_idx].radius;
-    float b = 2.0f * dot(ray_d, ray_o - center);
-    float c = dot(ray_o, ray_o) + dot(center, center) - 2.0f * dot(ray_o, center) - radius * radius;
-
-    float d = b * b - 4.0f * c;
-    if (d < 0)
-        return false;
-
-    t = (-b - sqrt(d)) / 2.0f;
-    return t > 0;
-}
-vec3 n_sphere(vec3 ray_d, vec3 p, int sphere_idx) {
-    vec3 center = spheres[sphere_idx].center;
-    vec3 n = normalize(p - center);
-    return dot(n, ray_d) < 0 ? n : -n;
 }
 
 bool i_tri(vec3 ray_o, vec3 ray_d, int tri_idx, out float t) {
@@ -107,12 +79,13 @@ vec3 n_tri(vec3 ray_d, vec3 p, int tri_idx) {
     vec3 v3 = triangles[tri_idx].v3;
 
     vec3 edge1 = v2 - v1, edge2 = v3 - v1;
-    return normalize(cross(edge1, edge2));
+    vec3 n = normalize(cross(edge1, edge2));
+    return dot(n, ray_d) < 0 ? n : -n;
 }
 
-vec3 reflect_d(vec3 ray_d, vec3 normal, int sphere_idx, inout uint seed) {
+vec3 reflect_d(vec3 ray_d, vec3 normal, int tri_id, inout uint seed) {
     // brdf for different materials
-    int type = spheres[sphere_idx].material.type;
+    int type = triangles[tri_id].material.type;
 
     // perfect hemispherical diffuse
     // not sure how to implement gaussian distribution
@@ -128,7 +101,7 @@ vec3 reflect_d(vec3 ray_d, vec3 normal, int sphere_idx, inout uint seed) {
     // specular with noise
     if (type == SPEC) {
         vec3 reflected = reflect(ray_d, normal);
-        float roughness = spheres[sphere_idx].material.roughness;
+        float roughness = triangles[tri_id].material.roughness;
         vec3 ret;
         do {
             vec3 jitter = (vec3(rand01(seed), rand01(seed), rand01(seed)) - 0.5f) * roughness;
@@ -150,9 +123,9 @@ vec3 trace(vec3 ray_o, vec3 ray_d, int depth, inout uint seed) {
     for (int d = 0; d < depth; d++) {
         float hit_t = FLOAT_INF;
         int best_i = -1;
-        for (int i = 0; i < sphere_count; i++) {
+        for (int i = 0; i < triangle_count; i++) {
             float t;
-            if (i_sphere(ray_o, ray_d, i, t) && t < hit_t) {
+            if (i_tri(ray_o, ray_d, i, t) && t < hit_t) {
                 hit_t = t;
                 best_i = i;
             }
@@ -161,15 +134,15 @@ vec3 trace(vec3 ray_o, vec3 ray_d, int depth, inout uint seed) {
         if (best_i == -1)
             break;
 
-        vec3 color = spheres[best_i].material.color;
-        vec3 emit = spheres[best_i].material.emit_color;
-        if (spheres[best_i].material.type == EMIT) {
+        vec3 color = triangles[best_i].material.color;
+        vec3 emit = triangles[best_i].material.emit_color;
+        if (triangles[best_i].material.type == EMIT) {
             stack[stack_ptr++] = TraceResult(color, emit, 0);
             break;
         }
 
         vec3 hit_p = ray_o + ray_d * hit_t;
-        vec3 hit_n = n_sphere(ray_d, hit_p, best_i);
+        vec3 hit_n = n_tri(ray_d, hit_p, best_i);
         vec3 bias = hit_n * BIAS;
 
         ray_o = hit_p + bias;
@@ -190,9 +163,9 @@ vec3 trace(vec3 ray_o, vec3 ray_d, int depth, inout uint seed) {
 vec3 normal_shade(vec3 ray_o, vec3 ray_d) {
     float hit_t = FLOAT_INF;
     int best_i = -1;
-    for (int i = 0; i < sphere_count; i++) {
+    for (int i = 0; i < triangle_count; i++) {
         float t;
-        if (i_sphere(ray_o, ray_d, i, t) && t < hit_t) {
+        if (i_tri(ray_o, ray_d, i, t) && t < hit_t) {
             hit_t = t;
             best_i = i;
         }
@@ -202,7 +175,7 @@ vec3 normal_shade(vec3 ray_o, vec3 ray_d) {
         return vec3(0);
 
     vec3 hit_p = ray_o + ray_d * hit_t;
-    vec3 hit_n = n_sphere(ray_d, hit_p, best_i);
+    vec3 hit_n = n_tri(ray_d, hit_p, best_i);
     return hit_n;
 }
 
@@ -230,15 +203,8 @@ void main() {
     }
     cur_color = pow(cur_color, vec3(1.0 / 2.2));
 
-    if (frame_count == 0) {
-        gl_FragColor = vec4(cur_color, 1.0);
-        return;
-    }
-
     vec2 pos = gl_FragCoord.xy / resolution.xy;
-    // vec3 prev_color = texture2D(prev_frame, pos).rgb;
     vec3 prev_color = texture(prev_frame, pos).rgb;
-    gl_FragColor = vec4(prev_color, 1.0);
 
     vec3 color = mix(prev_color, cur_color, 1 / float(frame_count + 1));
     gl_FragColor = vec4(color, 1.0);
