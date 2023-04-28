@@ -2,6 +2,8 @@
 
 uniform int frame;
 uniform ivec2 resolution;
+uniform int render_depth;
+uniform int render_samples;
 
 uniform int frame_count;
 uniform sampler2D prev_frame;
@@ -25,7 +27,7 @@ struct Triangle {
     Material material;
 };
 
-#define MAX_TRIANGLES 30
+#define MAX_TRIANGLES 40
 uniform int triangle_count;
 uniform Triangle triangles[MAX_TRIANGLES];
 
@@ -179,31 +181,29 @@ vec3 normal_shade(vec3 ray_o, vec3 ray_d) {
     return hit_n;
 }
 
-void camera_ray(out vec3 ray_o, out vec3 ray_d, inout uint seed) {
+vec3 camera_ray(inout uint seed) {
     float w = gl_FragCoord.x, h = gl_FragCoord.y;
     float cell_size = v_res.x / resolution.x;
     vec2 jitter = vec2(rand01(seed), rand01(seed)) * cell_size;
 
-    ray_d = vec3(w * cell_size - v_res.x / 2 + jitter.x, h * cell_size - v_res.y / 2 + jitter.y, -image_distance);
+    vec3 ray_d = vec3(w * cell_size - v_res.x / 2 + jitter.x, h * cell_size - v_res.y / 2 + jitter.y, -image_distance);
     ray_d = vec3(dot(ray_d, vec3(camera[0][0], camera[1][0], camera[2][0])), dot(ray_d, vec3(camera[0][1], camera[1][1], camera[2][1])), dot(ray_d, vec3(camera[0][2], camera[1][2], camera[2][2])));
-    ray_d = normalize(ray_d);
-    ray_o = look_from;
+    return normalize(ray_d);
 }
 void main() {
     // acts weird if seed = 0
     uint seed = uint(frame * gl_FragCoord.y + gl_FragCoord.x * resolution.y);
 
-    const int samples = 30;
+    const int samples = 5;
     vec3 cur_color = vec3(0);
     for (int i = 0; i < samples; i++) {
-        vec3 ray_o, ray_d;
-        camera_ray(ray_o, ray_d, seed);
-        vec3 color = trace(ray_o, ray_d, 3, seed);
+        vec3 ray_d = camera_ray(seed);
+        vec3 color = trace(look_from, ray_d, 5, seed);
         cur_color += color / samples;
     }
     cur_color = pow(cur_color, vec3(1.0 / 2.2));
 
-    vec2 pos = gl_FragCoord.xy / resolution.xy;
+    vec2 pos = g    l_FragCoord.xy / resolution.xy;
     vec3 prev_color = texture(prev_frame, pos).rgb;
 
     vec3 color = mix(prev_color, cur_color, 1 / float(frame_count + 1));

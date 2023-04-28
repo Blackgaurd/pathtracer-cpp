@@ -33,6 +33,12 @@ vec3_op(*);
 vec3_op(/);
 #undef vec3_op
 
+float get(const sf::Glsl::Vec3& a, int i) {
+    if (i == 0) return a.x;
+    if (i == 1) return a.y;
+    if (i == 2) return a.z;
+    throw std::runtime_error("Invalid index");
+}
 sf::Glsl::Vec3 operator-(const sf::Glsl::Vec3& a) {
     return sf::Glsl::Vec3(-a.x, -a.y, -a.z);
 }
