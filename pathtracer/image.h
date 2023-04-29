@@ -54,7 +54,7 @@ struct Image {
 
         bool success = fpng::fpng_encode_image_to_file(filename.c_str(), data.data(), res.width,
                                                        res.height, 3);
-        if (!success) std::cerr << "Failed to write image to file: " << filename << std::endl;
+        if (!success) std::cerr << "Failed to write image to file: " << filename << '\n';
     }
     void save_ppm(std::string filename) {
         std::ofstream out(filename);

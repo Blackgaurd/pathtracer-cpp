@@ -24,10 +24,6 @@ std::ostream& operator<<(std::ostream& os, const vec3& v) {
     return os;
 }
 std::ostream& operator<<(std::ostream& os, const std::array<float, 16>& mat) {
-    // print like this
-    // 1 2 3 4
-    // 5 6 7 8
-
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
             os << mat[i * 4 + j] << ' ';
@@ -71,7 +67,7 @@ struct Camera {
         this->const_up = this->up;
 
         if (std::abs(dot(forward, up)) > 0.999) {
-            std::cerr << "Up vector is too close to forward vector" << std::endl;
+            std::cerr << "Up vector is too close to forward vector" << '\n';
             return;
         }
 
@@ -333,11 +329,11 @@ struct BVH {
 bool load_shader(const std::string& filename, sf::Shader& shader) {
     if (!sf::Shader::isAvailable()) {
         // shaders are not available...
-        std::cerr << "Shaders are not available" << std::endl;
+        std::cerr << "Shaders are not available" << '\n';
         return false;
     }
     if (!shader.loadFromFile(filename, sf::Shader::Fragment)) {
-        std::cerr << "Failed to load shader" << std::endl;
+        std::cerr << "Failed to load shader" << '\n';
         return false;
     }
     return true;
@@ -490,6 +486,6 @@ int main() {
     }
 
     texture.getTexture().copyToImage().saveToFile("output.png");
-    std::cout << std::endl;
-    std::cout << "Saved output.png" << std::endl;
+    std::cout << '\n';
+    std::cout << "Saved output.png" << '\n';
 }

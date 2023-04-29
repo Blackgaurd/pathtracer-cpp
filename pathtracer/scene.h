@@ -39,7 +39,7 @@ struct Scene {
         }
 
         if (!reader.Warning().empty()) {
-            std::cout << "TinyObjLoader: " << reader.Warning() << std::endl;
+            std::cout << "TinyObjLoader: " << reader.Warning() << '\n';
         }
 
         const auto& attrib = reader.GetAttrib();
@@ -77,8 +77,8 @@ struct Scene {
                         break;
                     }
                     default: {
-                        std::cerr << "Unknown material type with illum: " << mat.illum << std::endl;
-                        std::cerr << "Using default material: Diffuse(0.5)" << std::endl;
+                        std::cerr << "Unknown material type with illum: " << mat.illum << '\n';
+                        std::cerr << "Using default material: Diffuse(0.5)" << '\n';
                         material = std::make_shared<Diffuse>(vec3(0.5));
                     }
                 }
@@ -91,9 +91,9 @@ struct Scene {
     void render(const Camera& camera, Image& image, int depth, int samples) {
         if (objects.empty()) throw std::runtime_error("no objects in scene");
 
-        std::cout << "Building BVH..." << std::endl;
+        std::cout << "Building BVH..." << '\n';
         bvh_root = build_bvh(objects);
-        std::cout << "Done" << std::endl;
+        std::cout << "Done" << '\n';
 
         std::cout << std::fixed << std::setprecision(2);
         Resolution res = image.res;
@@ -114,7 +114,7 @@ struct Scene {
                 image.set_pixel(w, h, color / samples);
             }
         }
-        std::cout << "\rRendering: 100%   " << std::endl;
+        std::cout << "\rRendering: 100%   " << '\n';
     }
     void run_thread(const Camera& camera, Image& image, int depth, int samples) {
         Resolution res = image.res;
@@ -145,9 +145,9 @@ struct Scene {
                                      " threads not supported");
         }
 
-        std::cout << "Building BVH..." << std::endl;
+        std::cout << "Building BVH..." << '\n';
         bvh_root = build_bvh(objects);
-        std::cout << "Done" << std::endl;
+        std::cout << "Done" << '\n';
 
         std::vector<std::thread> pool(threads);
         std::vector<Image> images(threads, Image(image.res));

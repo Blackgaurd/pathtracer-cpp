@@ -117,7 +117,7 @@ void print_bvh(const BVHNodePtr& node, std::string dir = "root", int depth = 0) 
     std::cout << node->aabb.lb << " " << node->aabb.rt;
     std::cout << " " << dir;
     if (node->is_leaf) std::cout << " leaf";
-    std::cout << std::endl;
+    std::cout << '\n';
     print_bvh(node->left, "left", depth + 1);
     print_bvh(node->right, "right", depth + 1);
 }

@@ -5,7 +5,7 @@
 int main() {
     Scene scene;
     scene.load_obj("examples/cats/cats.obj", "examples/cats/");
-    std::cout << "Loaded " << scene.objects.size() << " objects" << std::endl;
+    std::cout << "Loaded " << scene.objects.size() << " objects" << '\n';
 
     Resolution res = {512, 512};
     vec3 look_from = vec3(-0.25, 2.7, 5), look_at = vec3(-0.25, 2.7, 1);
