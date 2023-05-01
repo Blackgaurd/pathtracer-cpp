@@ -33,6 +33,15 @@ std::ostream& operator<<(std::ostream& os, const std::array<float, 16>& mat) {
     return os;
 }
 
+std::string vec3_str(const vec3& v, int precision) {
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(precision) << v;
+    return ss.str();
+}
+std::string to_string(const vec3& v) {
+    return vec3_str(v, 2);
+}
+
 struct Camera {
     // i do not understand quaternions
     enum Direction {
@@ -49,7 +58,7 @@ struct Camera {
     float fov, distance;
     vec3 pos;
     vec3 forward, up, right;  // centered about origin
-    vec3 const_up;            // used for rotating
+    vec3 world_up;            // used for rotating
     std::array<float, 16> transform;
 
 #define set_row(row, vec)           \
@@ -64,7 +73,7 @@ struct Camera {
         this->forward = normalize(forward);
         this->right = normalize(cross(forward, up));
         this->up = normalize(cross(right, forward));
-        this->const_up = this->up;
+        this->world_up = this->up;
 
         if (std::abs(dot(forward, up)) > 0.999) {
             std::cerr << "Up vector is too close to forward vector" << '\n';
@@ -91,13 +100,13 @@ struct Camera {
         switch (dir) {
             case LEFT: {
                 forward = normalize(forward * std::cos(angle) - right * std::sin(angle));
-                right = normalize(cross(forward, const_up));
+                right = normalize(cross(forward, world_up));
                 up = normalize(cross(right, forward));
                 break;
             }
             case RIGHT: {
                 forward = normalize(forward * std::cos(angle) + right * std::sin(angle));
-                right = normalize(cross(forward, const_up));
+                right = normalize(cross(forward, world_up));
                 up = normalize(cross(right, forward));
                 break;
             }
@@ -119,23 +128,23 @@ struct Camera {
         set_row(2, -forward);
     }
     void move(Direction dir, float amount) {
-        // according to const_up
+        // according to world_up
         switch (dir) {
             case UP: {
-                pos += const_up * amount;
+                pos += world_up * amount;
                 break;
             }
             case DOWN: {
-                pos -= const_up * amount;
+                pos -= world_up * amount;
                 break;
             }
             case FORWARD: {
-                vec3 const_forward = normalize(cross(const_up, right));
+                vec3 const_forward = normalize(cross(world_up, right));
                 pos += const_forward * amount;
                 break;
             }
             case BACKWARD: {
-                vec3 const_forward = normalize(cross(const_up, right));
+                vec3 const_forward = normalize(cross(world_up, right));
                 pos -= const_forward * amount;
                 break;
             }
@@ -158,6 +167,9 @@ struct Camera {
 vec3 component_min(const vec3& a, const vec3& b) {
     return vec3(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z));
 }
+vec3 component_max(const vec3& a, const vec3& b) {
+    return vec3(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z));
+}
 struct AABB {
     vec3 lb = vec3_from(FLOAT_INF), rt = vec3_from(-FLOAT_INF);
 
@@ -166,16 +178,25 @@ struct AABB {
 
     void merge(const AABB& other) {
         lb = component_min(lb, other.lb);
-        rt = component_min(rt, other.rt);
+        rt = component_max(rt, other.rt);
     }
     void merge(const vec3& point) {
         lb = component_min(lb, point);
-        rt = component_min(rt, point);
+        rt = component_max(rt, point);
+    }
+    bool is_valid() const {
+        return lb.x <= rt.x && lb.y <= rt.y && lb.z <= rt.z;
     }
     float area() const {
         // half of surface area
+        if (!is_valid()) throw std::runtime_error("invalid AABB");
         vec3 diff = rt - lb;
         return diff.x * diff.y + diff.x * diff.z + diff.y * diff.z;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const AABB& aabb) {
+        os << "AABB: " << aabb.lb << ' ' << aabb.rt;
+        return os;
     }
 };
 
@@ -218,25 +239,29 @@ struct BVHNode {
     BVHNode() = default;
     BVHNode(int left, int right, int tri_start, int tri_end)
         : left(left), right(right), tri_start(tri_start), tri_end(tri_end) {}
+
+    bool is_leaf() const {
+        return left == -1 && right == -1;
+    }
 };
 struct BVH {
     std::vector<Triangle> triangles;
-    std::vector<int> tri_indices;
+    std::vector<int> tri_idx;
     std::vector<BVHNode> nodes;
 
     BVH() = default;
     BVH(const std::vector<Triangle>& triangles) {
         this->triangles = triangles;
-        build();
+        build_stack();
     }
 
     void add_tri(const Triangle& tri) {
         triangles.push_back(tri);
     }
-    void build() {
-        // queue based bvh building
-        tri_indices.resize(triangles.size());
-        for (int i = 0; i < int(tri_indices.size()); i++) tri_indices[i] = i;
+    void build_stack() {
+        // stack based bvh building
+        tri_idx.resize(triangles.size());
+        for (int i = 0; i < int(tri_idx.size()); i++) tri_idx[i] = i;
 
         nodes.reserve(triangles.size() * 2);
         nodes.push_back(BVHNode(-1, -1, 0, triangles.size() - 1));
@@ -244,19 +269,24 @@ struct BVH {
         std::deque<int> q;
         q.push_back(0);
         while (!q.empty()) {
-            int cur = q.front();
+            BVHNode& cur = nodes[q.front()];
             q.pop_front();
+
+            // build current aabb
+            for (int i = cur.tri_start; i <= cur.tri_end; i++) {
+                cur.aabb.merge(triangles[tri_idx[i]].aabb);
+            }
 
             int best_axis = -1;
             float split_pos = 0, min_cost = FLOAT_INF;
             for (int axis = 0; axis < 3; axis++) {
-                for (int i = nodes[cur].tri_start; i <= nodes[cur].tri_end; i++) {
-                    const Triangle& tri = triangles[tri_indices[i]];
+                for (int i = cur.tri_start; i <= cur.tri_end; i++) {
+                    const Triangle& tri = triangles[tri_idx[i]];
                     float pos = get(tri.centroid, axis);
                     int left_cnt = 0, right_cnt = 0;
                     AABB left_aabb, right_aabb;
-                    for (int j = nodes[cur].tri_start; j <= nodes[cur].tri_end; j++) {
-                        const Triangle& other = triangles[tri_indices[j]];
+                    for (int j = cur.tri_start; j <= cur.tri_end; j++) {
+                        const Triangle& other = triangles[tri_idx[j]];
                         if (get(other.centroid, axis) < pos) {
                             left_cnt++;
                             left_aabb.merge(other.aabb);
@@ -276,53 +306,112 @@ struct BVH {
                 }
             }
 
-            float nosplit_cost =
-                (nodes[cur].tri_end - nodes[cur].tri_start + 1) * nodes[cur].aabb.area();
+            float nosplit_cost = (cur.tri_end - cur.tri_start + 1) * cur.aabb.area();
             if (best_axis == -1 || min_cost > nosplit_cost) {
                 // no split
                 continue;
             }
 
+            // triangle "sorting" algorithm:
+            // two pointer method
+            // "array of centroids" below
+            // e.g. [9, 7, 3, 6, 3, 5, 2, 9, 4, 10] with split_pos = 7
+            // should become [3, 6, 3, 5, 2, 4, 9, 7, 9, 10]
+            //                      split here ^
+            // - two pointers, one at the start, one at the end
+            // - advance start pointer until element at index >= 7 (split_pos)
+            // - move back end pointer until element at index < 7 (split_pos)
+            // - swap the two elements
+            // - repeat until start pointer >= end pointer
+            // - count the number of elements on the left (left_cnt = 6)
+
+            int start = cur.tri_start, end = cur.tri_end;
             int left_cnt = 0;
-            for (int i = nodes[cur].tri_start; i <= nodes[cur].tri_end; i++) {
-                const Triangle& tri = triangles[tri_indices[i]];
-                if (get(tri.centroid, best_axis) < split_pos) {
+            while (start < end) {
+                if (get(triangles[tri_idx[start]].centroid, best_axis) < split_pos) {
+                    start++;
                     left_cnt++;
-                } else {
-                    std::swap(tri_indices[i], tri_indices[nodes[cur].tri_end]);
+                    continue;
                 }
+                if (get(triangles[tri_idx[end]].centroid, best_axis) >= split_pos) {
+                    end--;
+                    continue;
+                }
+                std::swap(tri_idx[start], tri_idx[end]);
             }
 
-            int left = nodes.size();
-            int left_start = nodes[cur].tri_start, left_end = left_start + left_cnt - 1;
-            nodes.push_back(BVHNode(-1, -1, left_start, left_end));
-            int right = nodes.size();
-            int right_start = left_end + 1, right_end = nodes[cur].tri_end;
-            nodes.push_back(BVHNode(-1, -1, right_start, right_end));
+            // check cases when left_cnt == 0 (all on the right)
+            // or when left_cnt == cur.tri_end - cur.tri_start + 1 (all on the left)
 
-            nodes[cur].left = left;
-            nodes[cur].right = right;
+            bool has_left = !(left_cnt == 0);
+            bool has_right = !(left_cnt == cur.tri_end - cur.tri_start + 1);
 
-            q.push_back(left);
-            q.push_back(right);
-        }
-
-        // build all aabbs
-        for (int i = nodes.size() - 1; i >= 0; i--) {
-            nodes[i].aabb = AABB();
-            if (nodes[i].left == -1 && nodes[i].right == -1) {
-                // leaf
-                for (int j = nodes[i].tri_start; j <= nodes[i].tri_end; j++) {
-                    nodes[i].aabb.merge(triangles[tri_indices[j]].aabb);
-                }
-            } else {
-                nodes[i].aabb.merge(nodes[nodes[i].left].aabb);
-                nodes[i].aabb.merge(nodes[nodes[i].right].aabb);
+            if (has_left) {
+                int left_start = cur.tri_start, left_end = left_start + left_cnt - 1;
+                int left = nodes.size();
+                nodes.push_back(BVHNode(-1, -1, left_start, left_end));
+                cur.left = left;
+                q.push_back(left);
+            }
+            if (has_right) {
+                int right_start = cur.tri_start + left_cnt, right_end = cur.tri_end;
+                int right = nodes.size();
+                nodes.push_back(BVHNode(-1, -1, right_start, right_end));
+                cur.right = right;
+                q.push_back(right);
             }
         }
     }
-    size_t size() const {
-        return nodes.size();
+
+    void set_uniform(sf::Shader& shader) const {
+        // load the triangles
+        for (int i = 0; i < int(triangles.size()); i++) {
+            const Triangle& tri = triangles[i];
+            std::string name = "triangles[" + std::to_string(i) + "].";
+            shader.setUniform(name + "v1", tri.v1);
+            shader.setUniform(name + "v2", tri.v2);
+            shader.setUniform(name + "v3", tri.v3);
+
+            shader.setUniform(name + "aabb.lb", tri.aabb.lb);
+            shader.setUniform(name + "aabb.rt", tri.aabb.rt);
+
+            name += "material.";
+            shader.setUniform(name + "type", tri.material.type);
+            shader.setUniform(name + "color", tri.material.color);
+            shader.setUniform(name + "emit_color", tri.material.emit_color);
+            shader.setUniform(name + "roughness", tri.material.roughness);
+        }
+
+        // load bvh nodes
+        for (int i = 0; i < int(nodes.size()); i++) {
+            const BVHNode& node = nodes[i];
+            std::string name = "bvh_nodes[" + std::to_string(i) + "].";
+            shader.setUniform(name + "left", node.left);
+            shader.setUniform(name + "right", node.right);
+            shader.setUniform(name + "tri_start", node.tri_start);
+            shader.setUniform(name + "tri_end", node.tri_end);
+            shader.setUniform(name + "aabb.lb", node.aabb.lb);
+            shader.setUniform(name + "aabb.rt", node.aabb.rt);
+        }
+    }
+
+    void print(int node_idx = 0, int depth = 0, std::string dir = "root") const {
+        if (node_idx == -1) return;
+        std::cout << node_idx << ": ";
+        for (int i = 0; i < depth; i++) std::cout << " | ";
+        if (depth > 0) std::cout << " +-";
+
+        const BVHNode& node = nodes[node_idx];
+        std::cout << node.aabb.lb << ' ' << node.aabb.rt;
+        if (node.is_leaf()) {
+            std::cout << " leaf, tri: " << node.tri_start << " -> " << node.tri_end;
+            std::cout << " (" << dir << ")\n";
+        } else {
+            std::cout << " tri: " << node.tri_start << " -> " << node.tri_end;
+            std::cout << " (" << dir << ")\n";
+            print(node.left, depth + 1, "left");
+            print(node.right, depth + 1, "right");
+        }
     }
 };
 
@@ -340,36 +429,33 @@ bool load_shader(const std::string& filename, sf::Shader& shader) {
 }
 
 int main() {
-    const ivec2 resolution(600, 600);
-    sf::RenderWindow window(sf::VideoMode(resolution.x, resolution.y), "My window");
+    const ivec2 resolution(800, 800);
 
     sf::Shader pathtracer;
     if (!load_shader("shader/pathtracer.frag", pathtracer)) return 1;
 
-    vec3 pos = {278, 278, -500}, forward = {0, 0, 1}, b_up = {0, 1, 0};
-    Camera camera(pos, forward, b_up, resolution, 60 * DEG2RAD, 1);
+    vec3 pos = {53.09, 50, -42.69}, forward = {-0.51, -0.57, 0.64}, up = {-0.36, 0.82, 0.45};
+    Camera camera(pos, forward, up, resolution, 60 * DEG2RAD, 1);
 
-    Material red_diffuse = {Material::DIFF, {1, 0, 0}, {0, 0, 0}, 0};
-    Material green_diffuse = {Material::DIFF, {0, 1, 0}, {0, 0, 0}, 0};
-    Material white_diffuse = {Material::DIFF, {1, 1, 1}, {0, 0, 0}, 0};
+    // Material red_diffuse = {Material::DIFF, {1, 0, 0}, {0, 0, 0}, 0};
+    // Material green_diffuse = {Material::DIFF, {0, 1, 0}, {0, 0, 0}, 0};
+    // Material white_diffuse = {Material::DIFF, {1, 1, 1}, {0, 0, 0}, 0};
     Material white_emit = {Material::EMIT, {0, 0, 0}, {1, 1, 1}, 0};
+    Material red_emit = {Material::EMIT, {0, 0, 0}, {1, 0, 0}, 0};
 
     std::vector<Triangle> triangles;
-    int triangle_count = triangles.size();
-    pathtracer.setUniform("triangle_count", triangle_count);
-    for (int i = 0; i < triangle_count; i++) {
-        std::string name = "triangles[" + std::to_string(i) + "].";
-        pathtracer.setUniform(name + "v1", triangles[i].v1);
-        pathtracer.setUniform(name + "v2", triangles[i].v2);
-        pathtracer.setUniform(name + "v3", triangles[i].v3);
-        name += "material.";
-        pathtracer.setUniform(name + "type", triangles[i].material.type);
-        pathtracer.setUniform(name + "color", triangles[i].material.color);
-        pathtracer.setUniform(name + "emit_color", triangles[i].material.emit_color);
-        pathtracer.setUniform(name + "roughness", triangles[i].material.roughness);
-    }
+    triangles.push_back(Triangle(vec3(0, 0, 0), vec3(0, 20, 20), vec3(20, 0, 20), white_emit));
+    triangles.push_back(Triangle(vec3(0, 9, 0), vec3(5, 6, 8), vec3(2, 0, 10), red_emit));
+    std::cout << triangles[0].centroid << '\n';
+    std::cout << triangles[1].centroid << '\n';
 
-    const int FPS = 1000;
+
+    BVH bvh(triangles);
+    bvh.set_uniform(pathtracer);
+    bvh.print();
+
+    const int FPS = 30;
+    sf::RenderWindow window(sf::VideoMode(resolution.x, resolution.y), "");
     window.setFramerateLimit(FPS);
     const sf::RectangleShape screen(sf::Vector2f(resolution.x, resolution.y));
     pathtracer.setUniform("resolution", camera.res);
@@ -380,8 +466,7 @@ int main() {
     texture.create(resolution.x, resolution.y);
 
     std::cout << std::fixed << std::setprecision(2);
-    std::chrono::high_resolution_clock::time_point prev_time =
-        std::chrono::high_resolution_clock::now();
+    auto prev_time = std::chrono::high_resolution_clock::now();
     bool camera_changed = true;
     while (window.isOpen()) {
         sf::Event event;
@@ -474,6 +559,10 @@ int main() {
         texture.draw(screen, &pathtracer);
         texture.display();
 
+        std::string title = "pos: " + to_string(camera.pos) +
+                            " | forward: " + to_string(camera.forward) +
+                            " | up: " + to_string(camera.up);
+        window.setTitle(title);
         window.clear();
         window.draw(sf::Sprite(texture.getTexture()));
         window.display();

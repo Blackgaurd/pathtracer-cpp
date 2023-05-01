@@ -17,9 +17,9 @@ struct AABB {
         rt = vec3(std::max(rt.x, other.rt.x), std::max(rt.y, other.rt.y),
                   std::max(rt.z, other.rt.z));
     }
-    bool intersect_inv(const vec3& ray_0, const vec3& inv_ray_d) const {
-        vec3 t1 = (lb - ray_0) * inv_ray_d;
-        vec3 t2 = (rt - ray_0) * inv_ray_d;
+    bool intersect_inv(const vec3& ray_o, const vec3& inv_ray_d) const {
+        vec3 t1 = (lb - ray_o) * inv_ray_d;
+        vec3 t2 = (rt - ray_o) * inv_ray_d;
 
         float tmax = std::min({std::max(t1.x, t2.x), std::max(t1.y, t2.y), std::max(t1.z, t2.z)});
         float tmin = std::max({std::min(t1.x, t2.x), std::min(t1.y, t2.y), std::min(t1.z, t2.z)});

@@ -1,5 +1,20 @@
 #version 330
 
+const float PI = 3.1415926538f;
+const float PI_2 = 1.5707963268f;
+const float FLOAT_INF = 1e30f;
+const float BIAS = 1e-4f;
+const float EPS = 1e-6f;
+
+#define MAX_DEPTH 5
+
+#define RED vec4(1, 0, 0, 1)
+#define GREEN vec4(0, 1, 0, 1)
+#define BLUE vec4(0, 0, 1, 1)
+#define YELLOW vec4(1, 1, 0, 1)
+#define BLACK vec4(0, 0, 0, 1)
+#define WHITE vec4(1, 1, 1, 1)
+
 uniform int frame;
 uniform ivec2 resolution;
 uniform int render_depth;
@@ -18,26 +33,27 @@ const int DIFF = 2; // diffuse
 const int SPEC = 3; // specular
 struct Material {
     int type;
-    vec3 color;
-    vec3 emit_color;
+    vec3 color, emit_color;
     float roughness;
 };
+struct AABB {
+    vec3 lb, rt;
+};
 struct Triangle {
+    AABB aabb;
     vec3 v1, v2, v3;
     Material material;
 };
+struct BVHNode {
+    AABB aabb;
+    int left, right;
+    int tri_start, tri_end;
+};
 
-#define MAX_TRIANGLES 40
-uniform int triangle_count;
+#define MAX_TRIANGLES 100
 uniform Triangle triangles[MAX_TRIANGLES];
-
-const float PI = 3.1415926538f;
-const float PI_2 = 1.5707963268f;
-const float FLOAT_INF = 1e30f;
-const float BIAS = 1e-4f;
-const float EPS = 1e-6f;
-
-const int MAX_DEPTH = 5;
+uniform int tri_indices[MAX_TRIANGLES];
+uniform BVHNode bvh_nodes[MAX_TRIANGLES * 2];
 
 float rand01(inout uint state) {
     state ^= 2747636419u;
@@ -85,6 +101,72 @@ vec3 n_tri(vec3 ray_d, vec3 p, int tri_idx) {
     return dot(n, ray_d) < 0 ? n : -n;
 }
 
+float vec_min3(vec3 v) {
+    return min(min(v.x, v.y), v.z);
+}
+float vec_max3(vec3 v) {
+    return max(max(v.x, v.y), v.z);
+}
+vec3 component_min3(vec3 a, vec3 b) {
+    return vec3(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z));
+}
+vec3 component_max3(vec3 a, vec3 b) {
+    return vec3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z));
+}
+bool i_aabb(vec3 ray_o, vec3 inv_ray_d, AABB abbb) {
+    vec3 t1 = (abbb.lb - ray_o) * inv_ray_d;
+    vec3 t2 = (abbb.rt - ray_o) * inv_ray_d;
+
+    float tmax = vec_min3(component_max3(t1, t2));
+    float tmin = vec_max3(component_min3(t1, t2));
+    if (tmax < 0)
+        return false;
+
+    return tmin <= tmax;
+}
+bool is_leaf(int bvh_idx) {
+    return bvh_nodes[bvh_idx].left == -1; // && bvh_nodes[bvh_idx].right == -1;
+}
+int i_bvh(vec3 ray_o, vec3 ray_d, out float t) {
+    // returns the index of the triangle
+    // that intersects the ray
+    // or -1 if no intersection
+
+    // stack based intersection algorithm
+    // because i do not know how to make a queue in glsl
+
+    int stack[MAX_TRIANGLES * 2];
+    int stack_ptr = 0;
+    stack[stack_ptr++] = 0;
+
+    vec3 inv_ray_d = 1 / ray_d;
+    int ret = -1;
+    float min_t = FLOAT_INF;
+
+    while (stack_ptr > 0) {
+        int cur_idx = stack[--stack_ptr];
+        if (!i_aabb(ray_o, inv_ray_d, bvh_nodes[cur_idx].aabb))
+            continue;
+        if (is_leaf(cur_idx)) {
+            int start = bvh_nodes[cur_idx].tri_start;
+            int end = bvh_nodes[cur_idx].tri_end;
+            for (int i = start; i <= end; i++) {
+                float t_;
+                if (i_tri(ray_o, ray_d, tri_indices[i], t_) && t_ < min_t) {
+                    min_t = t_;
+                    ret = tri_indices[i];
+                }
+            }
+        } else {
+            stack[stack_ptr++] = bvh_nodes[cur_idx].left;
+            stack[stack_ptr++] = bvh_nodes[cur_idx].right;
+        }
+    }
+
+    if (ret != -1) t = min_t;
+    return ret;
+}
+
 vec3 reflect_d(vec3 ray_d, vec3 normal, int tri_id, inout uint seed) {
     // brdf for different materials
     int type = triangles[tri_id].material.type;
@@ -124,14 +206,7 @@ vec3 trace(vec3 ray_o, vec3 ray_d, int depth, inout uint seed) {
 
     for (int d = 0; d < depth; d++) {
         float hit_t = FLOAT_INF;
-        int best_i = -1;
-        for (int i = 0; i < triangle_count; i++) {
-            float t;
-            if (i_tri(ray_o, ray_d, i, t) && t < hit_t) {
-                hit_t = t;
-                best_i = i;
-            }
-        }
+        int best_i = i_bvh(ray_o, ray_d, hit_t);
 
         if (best_i == -1)
             break;
@@ -164,14 +239,7 @@ vec3 trace(vec3 ray_o, vec3 ray_d, int depth, inout uint seed) {
 
 vec3 normal_shade(vec3 ray_o, vec3 ray_d) {
     float hit_t = FLOAT_INF;
-    int best_i = -1;
-    for (int i = 0; i < triangle_count; i++) {
-        float t;
-        if (i_tri(ray_o, ray_d, i, t) && t < hit_t) {
-            hit_t = t;
-            best_i = i;
-        }
-    }
+    int best_i = i_bvh(ray_o, ray_d, hit_t);
 
     if (best_i == -1)
         return vec3(0);
@@ -194,7 +262,15 @@ void main() {
     // acts weird if seed = 0
     uint seed = uint(frame * gl_FragCoord.y + gl_FragCoord.x * resolution.y);
 
-    const int samples = 5;
+    bool isect0 = i_aabb(look_from, 1 / camera_ray(seed), bvh_nodes[0].aabb);
+    bool isect1 = i_aabb(look_from, 1 / camera_ray(seed), bvh_nodes[1].aabb);
+    bool isect2 = i_aabb(look_from, 1 / camera_ray(seed), bvh_nodes[2].aabb);
+    if (isect2) gl_FragColor = GREEN;
+    //else if (isect1) gl_FragColor = RED;
+    //else if (isect0) gl_FragColor = BLUE;
+    else gl_FragColor = BLACK;
+
+    /* const int samples = 1;
     vec3 cur_color = vec3(0);
     for (int i = 0; i < samples; i++) {
         vec3 ray_d = camera_ray(seed);
@@ -203,9 +279,9 @@ void main() {
     }
     cur_color = pow(cur_color, vec3(1.0 / 2.2));
 
-    vec2 pos = g    l_FragCoord.xy / resolution.xy;
+    vec2 pos = gl_FragCoord.xy / resolution.xy;
     vec3 prev_color = texture(prev_frame, pos).rgb;
 
     vec3 color = mix(prev_color, cur_color, 1 / float(frame_count + 1));
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = vec4(color, 1.0); */
 }
