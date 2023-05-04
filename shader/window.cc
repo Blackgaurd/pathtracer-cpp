@@ -8,6 +8,10 @@
 
 #include "sfml_linalg.h"
 
+#define WATCH(x) std::cerr << #x << ": " << x << '\n'
+
+// #define V_SYNC
+
 #define DEG2RAD M_PI / 180
 #define FLOAT_INF 1e30
 
@@ -244,6 +248,15 @@ struct BVHNode {
         return left == -1 && right == -1;
     }
 };
+std::ostream& operator<<(std::ostream& os, std::vector<int> const& v) {
+    os << '[';
+    for (int i = 0; i < int(v.size()); i++) {
+        os << v[i];
+        if (i != int(v.size()) - 1) os << ", ";
+    }
+    os << ']';
+    return os;
+}
 struct BVH {
     std::vector<Triangle> triangles;
     std::vector<int> tri_idx;
@@ -252,12 +265,14 @@ struct BVH {
     BVH() = default;
     BVH(const std::vector<Triangle>& triangles) {
         this->triangles = triangles;
+        // todo: try replacing stack with queue
         build_stack();
     }
 
     void add_tri(const Triangle& tri) {
         triangles.push_back(tri);
     }
+
     void build_stack() {
         // stack based bvh building
         tri_idx.resize(triangles.size());
@@ -269,14 +284,15 @@ struct BVH {
         std::deque<int> q;
         q.push_back(0);
         while (!q.empty()) {
-            BVHNode& cur = nodes[q.front()];
-            q.pop_front();
+            BVHNode& cur = nodes[q.back()];
+            q.pop_back();
 
             // build current aabb
             for (int i = cur.tri_start; i <= cur.tri_end; i++) {
                 cur.aabb.merge(triangles[tri_idx[i]].aabb);
             }
 
+            // todo: extract finding best split position and axis to a function
             int best_axis = -1;
             float split_pos = 0, min_cost = FLOAT_INF;
             for (int axis = 0; axis < 3; axis++) {
@@ -306,7 +322,8 @@ struct BVH {
                 }
             }
 
-            float nosplit_cost = (cur.tri_end - cur.tri_start + 1) * cur.aabb.area();
+            int tri_count = cur.tri_end - cur.tri_start + 1;
+            float nosplit_cost = tri_count * cur.aabb.area();
             if (best_axis == -1 || min_cost > nosplit_cost) {
                 // no split
                 continue;
@@ -331,39 +348,39 @@ struct BVH {
                 if (get(triangles[tri_idx[start]].centroid, best_axis) < split_pos) {
                     start++;
                     left_cnt++;
-                    continue;
-                }
-                if (get(triangles[tri_idx[end]].centroid, best_axis) >= split_pos) {
+                } else if (get(triangles[tri_idx[end]].centroid, best_axis) >= split_pos) {
                     end--;
-                    continue;
+                } else {
+                    std::swap(tri_idx[start], tri_idx[end]);
                 }
-                std::swap(tri_idx[start], tri_idx[end]);
             }
 
-            // check cases when left_cnt == 0 (all on the right)
-            // or when left_cnt == cur.tri_end - cur.tri_start + 1 (all on the left)
-
-            bool has_left = !(left_cnt == 0);
-            bool has_right = !(left_cnt == cur.tri_end - cur.tri_start + 1);
-
-            if (has_left) {
-                int left_start = cur.tri_start, left_end = left_start + left_cnt - 1;
-                int left = nodes.size();
-                nodes.push_back(BVHNode(-1, -1, left_start, left_end));
-                cur.left = left;
-                q.push_back(left);
+            if (left_cnt == 0 || left_cnt == tri_count) {
+                // no split
+                continue;
             }
-            if (has_right) {
-                int right_start = cur.tri_start + left_cnt, right_end = cur.tri_end;
-                int right = nodes.size();
-                nodes.push_back(BVHNode(-1, -1, right_start, right_end));
-                cur.right = right;
-                q.push_back(right);
-            }
+            int left = nodes.size();
+            int left_start = cur.tri_start, left_end = left_start + left_cnt - 1;
+            nodes.push_back(BVHNode(-1, -1, left_start, left_end));
+            cur.left = left;
+
+            int right = nodes.size();
+            int right_start = cur.tri_start + left_cnt, right_end = cur.tri_end;
+            nodes.push_back(BVHNode(-1, -1, right_start, right_end));
+            cur.right = right;
+
+            q.push_back(left);
+            q.push_back(right);
         }
     }
 
     void set_uniform(sf::Shader& shader) const {
+        // load triangle indices
+        for (int i = 0; i < int(tri_idx.size()); i++) {
+            std::string name = "tri_indices[" + std::to_string(i) + "]";
+            shader.setUniform(name, tri_idx[i]);
+        }
+
         // load the triangles
         for (int i = 0; i < int(triangles.size()); i++) {
             const Triangle& tri = triangles[i];
@@ -434,21 +451,59 @@ int main() {
     sf::Shader pathtracer;
     if (!load_shader("shader/pathtracer.frag", pathtracer)) return 1;
 
-    vec3 pos = {53.09, 50, -42.69}, forward = {-0.51, -0.57, 0.64}, up = {-0.36, 0.82, 0.45};
+    vec3 pos = {278, 278, -500}, forward = {0, 0, 1}, up = {0, 1, 0};
     Camera camera(pos, forward, up, resolution, 60 * DEG2RAD, 1);
 
-    // Material red_diffuse = {Material::DIFF, {1, 0, 0}, {0, 0, 0}, 0};
-    // Material green_diffuse = {Material::DIFF, {0, 1, 0}, {0, 0, 0}, 0};
-    // Material white_diffuse = {Material::DIFF, {1, 1, 1}, {0, 0, 0}, 0};
+    Material red_diffuse = {Material::DIFF, {1, 0, 0}, {0, 0, 0}, 0};
+    Material green_diffuse = {Material::DIFF, {0, 1, 0}, {0, 0, 0}, 0};
+    Material white_diffuse = {Material::DIFF, {1, 1, 1}, {0, 0, 0}, 0};
     Material white_emit = {Material::EMIT, {0, 0, 0}, {1, 1, 1}, 0};
-    Material red_emit = {Material::EMIT, {0, 0, 0}, {1, 0, 0}, 0};
 
     std::vector<Triangle> triangles;
-    triangles.push_back(Triangle(vec3(0, 0, 0), vec3(0, 20, 20), vec3(20, 0, 20), white_emit));
-    triangles.push_back(Triangle(vec3(0, 9, 0), vec3(5, 6, 8), vec3(2, 0, 10), red_emit));
-    std::cout << triangles[0].centroid << '\n';
-    std::cout << triangles[1].centroid << '\n';
-
+    vec3 f1 = vec3(552.8, 0, 0), f2 = vec3(0, 0, 0), f3 = vec3(0, 0, 559.2),
+         f4 = vec3(549.6, 0, 559.2);
+    triangles.push_back(Triangle{f1, f2, f3, white_diffuse});
+    triangles.push_back(Triangle{f4, f3, f1, white_diffuse});
+    vec3 l1 = vec3(343, 548.7, 227), l2 = vec3(343, 548.7, 332), l3 = vec3(213, 548.7, 332),
+         l4 = vec3(213, 548.7, 227);
+    triangles.push_back(Triangle{l1, l2, l3, white_emit});
+    triangles.push_back(Triangle{l4, l3, l1, white_emit});
+    vec3 c1 = vec3(556, 548.8, 0), c2 = vec3(0, 548.8, 0), c3 = vec3(0, 548.8, 559.2),
+         c4 = vec3(556.0, 548.8, 559.2);
+    triangles.push_back(Triangle{c1, c2, c3, white_diffuse});
+    triangles.push_back(Triangle{c4, c3, c1, white_diffuse});
+    vec3 b1 = vec3(549.6, 0, 559.2), b2 = vec3(0, 0, 559.2), b3 = vec3(0, 548.8, 559.2),
+         b4 = vec3(556, 548.8, 559.2);
+    triangles.push_back(Triangle{b1, b2, b3, white_diffuse});
+    triangles.push_back(Triangle{b4, b3, b1, white_diffuse});
+    vec3 r1 = vec3(0, 0, 559.2), r2 = vec3(0, 0, 0), r3 = vec3(0, 548.8, 0),
+         r4 = vec3(0, 548.8, 559.2);
+    triangles.push_back(Triangle{r1, r2, r3, green_diffuse});
+    triangles.push_back(Triangle{r4, r3, r1, green_diffuse});
+    vec3 lw1 = vec3(552.8, 0, 0), lw2 = vec3(549.6, 0, 559.2), lw3 = vec3(556, 548.8, 559.2),
+         lw4 = vec3(556, 548.8, 0);
+    triangles.push_back(Triangle{lw1, lw2, lw3, red_diffuse});
+    triangles.push_back(Triangle{lw4, lw3, lw1, red_diffuse});
+    vec3 sb1 = vec3(130, 165, 65), sb2 = vec3(82, 165, 225), sb3 = vec3(240, 165, 272),
+         sb4 = vec3(290, 165, 114);
+    triangles.push_back(Triangle{sb1, sb2, sb3, white_diffuse});
+    triangles.push_back(Triangle{sb4, sb3, sb1, white_diffuse});
+    vec3 sb5 = vec3(290, 0, 114), sb6 = vec3(290, 165, 114), sb7 = vec3(240, 165, 272),
+         sb8 = vec3(240, 0, 272);
+    triangles.push_back(Triangle{sb5, sb6, sb7, white_diffuse});
+    triangles.push_back(Triangle{sb8, sb7, sb5, white_diffuse});
+    vec3 sb9 = vec3(130, 0, 65), sb10 = vec3(130, 165, 65), sb11 = vec3(290, 165, 114),
+         sb12 = vec3(290, 0, 114);
+    triangles.push_back(Triangle{sb9, sb10, sb11, white_diffuse});
+    triangles.push_back(Triangle{sb12, sb11, sb9, white_diffuse});
+    vec3 sb13 = vec3(82, 0, 225), sb14 = vec3(82, 165, 225), sb15 = vec3(130, 165, 65),
+         sb16 = vec3(130, 0, 65);
+    triangles.push_back(Triangle{sb13, sb14, sb15, white_diffuse});
+    triangles.push_back(Triangle{sb16, sb15, sb13, white_diffuse});
+    vec3 sb17 = vec3(240, 0, 272), sb18 = vec3(240, 165, 272), sb19 = vec3(82, 165, 225),
+         sb20 = vec3(82, 0, 225);
+    triangles.push_back(Triangle{sb17, sb18, sb19, white_diffuse});
+    triangles.push_back(Triangle{sb20, sb19, sb17, white_diffuse});
 
     BVH bvh(triangles);
     bvh.set_uniform(pathtracer);
@@ -457,6 +512,9 @@ int main() {
     const int FPS = 30;
     sf::RenderWindow window(sf::VideoMode(resolution.x, resolution.y), "");
     window.setFramerateLimit(FPS);
+#ifdef V_SYNC
+    window.setVerticalSyncEnabled(true);
+#endif
     const sf::RectangleShape screen(sf::Vector2f(resolution.x, resolution.y));
     pathtracer.setUniform("resolution", camera.res);
 

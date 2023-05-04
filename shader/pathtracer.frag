@@ -133,7 +133,7 @@ int i_bvh(vec3 ray_o, vec3 ray_d, out float t) {
     // or -1 if no intersection
 
     // stack based intersection algorithm
-    // because i do not know how to make a queue in glsl
+    // to mimic recursion
 
     int stack[MAX_TRIANGLES * 2];
     int stack_ptr = 0;
@@ -144,7 +144,8 @@ int i_bvh(vec3 ray_o, vec3 ray_d, out float t) {
     float min_t = FLOAT_INF;
 
     while (stack_ptr > 0) {
-        int cur_idx = stack[--stack_ptr];
+        stack_ptr--;
+        int cur_idx = stack[stack_ptr];
         if (!i_aabb(ray_o, inv_ray_d, bvh_nodes[cur_idx].aabb))
             continue;
         if (is_leaf(cur_idx)) {
@@ -262,15 +263,7 @@ void main() {
     // acts weird if seed = 0
     uint seed = uint(frame * gl_FragCoord.y + gl_FragCoord.x * resolution.y);
 
-    bool isect0 = i_aabb(look_from, 1 / camera_ray(seed), bvh_nodes[0].aabb);
-    bool isect1 = i_aabb(look_from, 1 / camera_ray(seed), bvh_nodes[1].aabb);
-    bool isect2 = i_aabb(look_from, 1 / camera_ray(seed), bvh_nodes[2].aabb);
-    if (isect2) gl_FragColor = GREEN;
-    //else if (isect1) gl_FragColor = RED;
-    //else if (isect0) gl_FragColor = BLUE;
-    else gl_FragColor = BLACK;
-
-    /* const int samples = 1;
+    const int samples = 15;
     vec3 cur_color = vec3(0);
     for (int i = 0; i < samples; i++) {
         vec3 ray_d = camera_ray(seed);
@@ -283,5 +276,5 @@ void main() {
     vec3 prev_color = texture(prev_frame, pos).rgb;
 
     vec3 color = mix(prev_color, cur_color, 1 / float(frame_count + 1));
-    gl_FragColor = vec4(color, 1.0); */
+    gl_FragColor = vec4(color, 1.0);
 }
