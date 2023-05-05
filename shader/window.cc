@@ -414,7 +414,7 @@ struct BVH {
 
     void print(int node_idx = 0, int depth = 0, std::string dir = "root") const {
         if (node_idx == -1) return;
-        std::cout << node_idx << ": ";
+        std::cout << node_idx << ":\t";
         for (int i = 0; i < depth; i++) std::cout << " | ";
         if (depth > 0) std::cout << " +-";
 
@@ -505,11 +505,32 @@ int main() {
     triangles.push_back(Triangle{sb17, sb18, sb19, white_diffuse});
     triangles.push_back(Triangle{sb20, sb19, sb17, white_diffuse});
 
+    vec3 tb1 = vec3(423, 330, 247), tb2 = vec3(265, 330, 296), tb3 = vec3(314, 330, 456),
+         tb4 = vec3(472, 330, 406);
+    triangles.push_back(Triangle{tb1, tb2, tb3, white_diffuse});
+    triangles.push_back(Triangle{tb1, tb3, tb4, white_diffuse});
+    vec3 tb5 = vec3(423, 0, 247), tb6 = vec3(423, 330, 247), tb7 = vec3(472, 330, 406),
+         tb8 = vec3(472, 0, 406);
+    triangles.push_back(Triangle{tb5, tb6, tb7, white_diffuse});
+    triangles.push_back(Triangle{tb5, tb7, tb8, white_diffuse});
+    vec3 tb9 = vec3(472, 0, 406), tb10 = vec3(472, 330, 406), tb11 = vec3(314, 330, 456),
+         tb12 = vec3(314, 0, 456);
+    triangles.push_back(Triangle{tb9, tb10, tb11, white_diffuse});
+    triangles.push_back(Triangle{tb9, tb11, tb12, white_diffuse});
+    vec3 tb13 = vec3(314, 0, 456), tb14 = vec3(314, 330, 456), tb15 = vec3(265, 330, 296),
+         tb16 = vec3(265, 0, 296);
+    triangles.push_back(Triangle{tb13, tb14, tb15, white_diffuse});
+    triangles.push_back(Triangle{tb13, tb15, tb16, white_diffuse});
+    vec3 tb17 = vec3(265, 0, 296), tb18 = vec3(265, 330, 296), tb19 = vec3(423, 330, 247),
+         tb20 = vec3(423, 0, 247);
+    triangles.push_back(Triangle{tb17, tb18, tb19, white_diffuse});
+    triangles.push_back(Triangle{tb17, tb19, tb20, white_diffuse});
+
     BVH bvh(triangles);
     bvh.set_uniform(pathtracer);
     bvh.print();
 
-    const int FPS = 30;
+    const int FPS = 5;
     sf::RenderWindow window(sf::VideoMode(resolution.x, resolution.y), "");
     window.setFramerateLimit(FPS);
 #ifdef V_SYNC
@@ -517,6 +538,11 @@ int main() {
 #endif
     const sf::RectangleShape screen(sf::Vector2f(resolution.x, resolution.y));
     pathtracer.setUniform("resolution", camera.res);
+
+    const int samples = 30;
+    const int depth = 5;
+    pathtracer.setUniform("render_samples", samples);
+    pathtracer.setUniform("render_depth", depth);
 
     int frame = 1;
     int frame_count = 0;
@@ -625,12 +651,15 @@ int main() {
         window.draw(sf::Sprite(texture.getTexture()));
         window.display();
 
+        if (frame % FPS == 0){
         float fps = 1.0 / std::chrono::duration_cast<std::chrono::duration<double>>(
                               std::chrono::high_resolution_clock::now() - prev_time)
                               .count();
+        std::cout << "\rFPS: " << fps << std::flush;}
         prev_time = std::chrono::high_resolution_clock::now();
-        std::cout << "\rFPS: " << fps << std::flush;
     }
+
+    std::cout << "\nFrames rendered at current position: " << frame_count << '\n';
 
     texture.getTexture().copyToImage().saveToFile("output.png");
     std::cout << '\n';

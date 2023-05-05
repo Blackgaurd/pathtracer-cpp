@@ -263,13 +263,14 @@ void main() {
     // acts weird if seed = 0
     uint seed = uint(frame * gl_FragCoord.y + gl_FragCoord.x * resolution.y);
 
-    const int samples = 15;
     vec3 cur_color = vec3(0);
-    for (int i = 0; i < samples; i++) {
+    for (int i = 0; i < render_samples; i++) {
         vec3 ray_d = camera_ray(seed);
-        vec3 color = trace(look_from, ray_d, 5, seed);
-        cur_color += color / samples;
+        vec3 color = trace(look_from, ray_d, render_depth, seed);
+        cur_color += color / render_samples;
     }
+
+    // gamma correction
     cur_color = pow(cur_color, vec3(1.0 / 2.2));
 
     vec2 pos = gl_FragCoord.xy / resolution.xy;
