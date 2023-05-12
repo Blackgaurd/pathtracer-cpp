@@ -2,9 +2,8 @@
 
 Path tracing algorithm implemented in C++ that supports the following:
 
-- extendable object-oriented design
+- object-oriented design
 - look from/at camera model
-- spheres
 - triangles
 - lambertian diffuse
 - specular lighting
@@ -12,14 +11,12 @@ Path tracing algorithm implemented in C++ that supports the following:
 - global illumination
 - soft shadows
 - BVH acceleration
-- CPU multithreaded rendering
+- CPU/GPU rendering
 - OBJ file loading
 
 ## Examples
 
-Two cats in the Cornell box (~4200 triangles) rendered at 1000 spp:
-
-![cats-example](examples/cats/cats.png)
+to do
 
 ## Building
 
@@ -37,16 +34,9 @@ And to run the executable:
 
 ## To Do
 
-- change build tool from bazel to CMake for windows :weary:
-
-- importance base sampling with BRDF instead of uniform and random
 - explicit light sampling [here](https://computergraphics.stackexchange.com/questions/5152/progressive-path-tracing-with-explicit-light-sampling/5153#5153?newreg=ba3a51d61bf64da5a1b3a589287511b2)
   - punctual (point) light sources
   - light attenuation
 - skybox
 
-maybe:
-
-- russian roulette
-- python port
-- GPU support with glsl
+- use OpenGL for GPU rendering instead of SFML (idk why shader only allows ~350 triangles)

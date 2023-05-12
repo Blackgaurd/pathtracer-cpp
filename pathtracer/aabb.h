@@ -1,21 +1,21 @@
 #pragma once
 
-#include <algorithm>
-
 #include "linalg.h"
 
 // axis aligned bounding box
 struct AABB {
-    vec3 lb = 1e30, rt = -1e30;
+    vec3 lb = FLOAT_INF, rt = -FLOAT_INF;
 
     AABB() = default;
     AABB(const vec3& lb, const vec3& rt) : lb(lb), rt(rt) {}
 
     void merge(const AABB& other) {
-        lb = vec3(std::min(lb.x, other.lb.x), std::min(lb.y, other.lb.y),
-                  std::min(lb.z, other.lb.z));
-        rt = vec3(std::max(rt.x, other.rt.x), std::max(rt.y, other.rt.y),
-                  std::max(rt.z, other.rt.z));
+        lb = component_min(lb, other.lb);
+        rt = component_max(rt, other.rt);
+    }
+    void merge(const vec3& p) {
+        lb = component_min(lb, p);
+        rt = component_max(rt, p);
     }
     bool intersect_inv(const vec3& ray_o, const vec3& inv_ray_d) const {
         vec3 t1 = (lb - ray_o) * inv_ray_d;
@@ -39,5 +39,9 @@ struct AABB {
     }
     bool is_valid() const {
         return lb.x <= rt.x && lb.y <= rt.y && lb.z <= rt.z;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const AABB& aabb) {
+        return os << "AABB: " << aabb.lb << " " << aabb.rt;
     }
 };

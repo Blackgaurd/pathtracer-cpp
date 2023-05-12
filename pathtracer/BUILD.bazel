@@ -31,6 +31,12 @@ cc_library(
 )
 
 cc_library(
+    name = "shader",
+    hdrs = ["shader.h"],
+    visibility = ["//visibility:private"],
+)
+
+cc_library(
     name = "image",
     hdrs = ["image.h"],
     visibility = ["//visibility:private"],
@@ -74,29 +80,14 @@ cc_library(
 )
 
 cc_library(
-    name = "object",
-    hdrs = ["object.h"],
+    name = "triangle",
+    hdrs = ["triangle.h"],
     visibility = ["//visibility:private"],
     deps =
         [
+            ":aabb",
             ":linalg",
             ":material",
-        ],
-)
-
-cc_library(
-    name = "scene",
-    hdrs = ["scene.h"],
-    visibility = ["//visibility:private"],
-    deps =
-        [
-            ":bvh",
-            ":camera",
-            ":image",
-            ":linalg",
-            ":material",
-            ":object",
-            ":tinyobj",
         ],
 )
 
@@ -108,23 +99,40 @@ cc_library(
         [
             ":aabb",
             ":linalg",
-            ":object",
+            ":material",
+            ":tinyobj",
+            ":triangle",
         ],
+)
+
+cc_library(
+    name = "render",
+    hdrs = ["render.h"],
+    linkopts = [
+        "-lsfml-graphics",
+        "-lsfml-window",
+        "-lsfml-system",
+    ],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":bvh",
+        ":camera",
+        ":image",
+        ":linalg",
+        ":shader",
+    ],
 )
 
 cc_library(
     name = "pathtracer",
     hdrs = ["pathtracer.h"],
     visibility = ["//visibility:public"],
-    deps =
-        [
-            ":bvh",
-            ":camera",
-            ":image",
-            ":linalg",
-            ":material",
-            ":object",
-            ":rng",
-            ":scene",
-        ],
+    deps = [
+        ":bvh",
+        ":camera",
+        ":linalg",
+        ":material",
+        ":render",
+        ":triangle",
+    ],
 )

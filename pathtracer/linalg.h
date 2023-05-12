@@ -3,31 +3,46 @@
 // make sure c++17
 static_assert(__cplusplus >= 201703L, "C++17 required");
 
-#include <array>
+#include <algorithm>
 #include <cmath>
-#include <functional>
-#include <iostream>
-#include <stdexcept>
-
-#ifndef NO_ROW_MAJOR
-#define ROW_MAJOR
-#endif
+#include <ostream>
 
 #define EPS 1e-6
+#define FLOAT_INF 1e30
 
-struct Resolution {
-    int width, height;
+struct vec2 {
+    float x, y;
 
-    Resolution() = default;
-    Resolution(int width, int height) : width(width), height(height) {}
+    vec2() = default;
+    vec2(float v) : x(v), y(v) {}
+    vec2(float x, float y) : x(x), y(y) {}
 
-    bool operator==(const Resolution& o) const {
-        return width == o.width && height == o.height;
+    vec2 operator*(float o) {
+        return vec2(x * o, y * o);
     }
-    bool operator!=(const Resolution& o) const {
-        return !(*this == o);
+    bool operator==(const vec2& other) {
+        return std::abs(x - other.x) < EPS && std::abs(y - other.y) < EPS;
+    }
+    bool operator!=(const vec2& other) {
+        return !(*this == other);
     }
 };
+
+struct ivec2 {
+    int x, y;
+
+    ivec2() = default;
+    ivec2(int v) : x(v), y(v) {}
+    ivec2(int x, int y) : x(x), y(y) {}
+
+    bool operator==(const ivec2& other) {
+        return x == other.x && y == other.y;
+    }
+    bool operator!=(const ivec2& other) {
+        return !(*this == other);
+    }
+};
+
 struct vec3 {
     float x, y, z;
 
@@ -35,22 +50,28 @@ struct vec3 {
     vec3(float v) : x(v), y(v), z(v) {}
     vec3(float x, float y, float z) : x(x), y(y), z(z) {}
 
-#define vec3_op(op)                                                                      \
-    vec3 operator op(const vec3& o) const { return vec3(x op o.x, y op o.y, z op o.z); } \
-    vec3& operator op##=(const vec3& o) {                                                \
-        x op## = o.x;                                                                    \
-        y op## = o.y;                                                                    \
-        z op## = o.z;                                                                    \
-        return *this;                                                                    \
-    }                                                                                    \
-    vec3 operator op(float o) const { return vec3(x op o, y op o, z op o); }             \
-    vec3& operator op##=(float o) {                                                      \
-        x op## = o;                                                                      \
-        y op## = o;                                                                      \
-        z op## = o;                                                                      \
-        return *this;                                                                    \
-    }                                                                                    \
-    friend vec3 operator op(float o, const vec3& v) { return vec3(o op v.x, o op v.y, o op v.z); }
+#define vec3_op(op)                                   \
+    vec3 operator op(const vec3& o) const {           \
+        return vec3(x op o.x, y op o.y, z op o.z);    \
+    }                                                 \
+    vec3& operator op##=(const vec3& o) {             \
+        x op## = o.x;                                 \
+        y op## = o.y;                                 \
+        z op## = o.z;                                 \
+        return *this;                                 \
+    }                                                 \
+    vec3 operator op(float o) const {                 \
+        return vec3(x op o, y op o, z op o);          \
+    }                                                 \
+    vec3& operator op##=(float o) {                   \
+        x op## = o;                                   \
+        y op## = o;                                   \
+        z op## = o;                                   \
+        return *this;                                 \
+    }                                                 \
+    friend vec3 operator op(float o, const vec3& v) { \
+        return vec3(o op v.x, o op v.y, o op v.z);    \
+    }
 
     vec3_op(+);
     vec3_op(-);
@@ -59,6 +80,12 @@ struct vec3 {
 #undef vec3_op
 
     float& operator[](int i) {
+        if (i == 0) return x;
+        if (i == 1) return y;
+        if (i == 2) return z;
+        throw std::out_of_range("vec3 index out of range");
+    }
+    float operator[](int i) const {
         if (i == 0) return x;
         if (i == 1) return y;
         if (i == 2) return z;
@@ -105,6 +132,12 @@ struct vec3 {
         return vec3(f(x), f(y), f(z));
     }
 
+    friend vec3 component_max(const vec3& a, const vec3& b) {
+        return vec3(std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z));
+    }
+    friend vec3 component_min(const vec3& a, const vec3& b) {
+        return vec3(std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z));
+    }
     friend vec3 pow(const vec3& v, float p) {
         return vec3(std::pow(v.x, p), std::pow(v.y, p), std::pow(v.z, p));
     }
@@ -146,15 +179,9 @@ struct mat4 {
     }
 
     vec3 transform_dir(const vec3& v) const {
-#ifdef ROW_MAJOR
         return vec3(v.dot({arr[0][0], arr[1][0], arr[2][0]}),
                     v.dot({arr[0][1], arr[1][1], arr[2][1]}),
                     v.dot({arr[0][2], arr[1][2], arr[2][2]}));
-#else
-        return vec3(v.dot({arr[0][0], arr[0][1], arr[0][2]}),
-                    v.dot({arr[1][0], arr[1][1], arr[1][2]}),
-                    v.dot({arr[2][0], arr[2][1], arr[2][2]}));
-#endif
     }
 
     friend std::ostream& operator<<(std::ostream& os, const mat4& m) {

@@ -1,72 +1,143 @@
 #pragma once
 
+#include <iostream>
+
 #include "linalg.h"
 #include "rng.h"
 
-struct fResolution {
-    float width, height;
-
-    fResolution() = default;
-    fResolution(float width, float height) : width(width), height(height) {}
-};
-
 // isometric projection camera
 struct Camera {
-    Resolution res;     // in pixels
-    fResolution v_res;  // in world coordinates
-    float cell_size;    // in world coordinates
-    float image_distance;
-    vec3 look_from, look_at, up;
-    mat4 transform;
+    enum Direction {
+        FORWARD,
+        BACKWARD,
+        LEFT,
+        RIGHT,
+        UP,
+        DOWN,
+    };
+
+    ivec2 res;
+    vec2 v_res;
+    float fov, distance, cell_size;
+    vec3 pos;
+    vec3 forward, up, right;  // centered about origin
+    vec3 world_up;            // used for rotating
+    std::array<float, 16> transform;
+
+#define set_row(row, vec)           \
+    transform[row * 4] = vec.x;     \
+    transform[row * 4 + 1] = vec.y; \
+    transform[row * 4 + 2] = vec.z;
 
     Camera() = default;
-    Camera(const Resolution& resolution, float fov, float image_distance, const vec3& look_from,
-           const vec3& look_at, const vec3& up)
-        : res(resolution),
-          image_distance(image_distance),
-          look_from(look_from),
-          look_at(look_at),
-          up(up) {
-        vec3 forward = (look_from - look_at).normalize();
+    Camera(const vec3& pos, const vec3& forward, const vec3& up, const ivec2& res, float fov,
+           float distance) {
+        this->pos = pos;
+        this->forward = forward.normalize();
+        this->right = forward.cross(up).normalize();
+        this->up = right.cross(forward).normalize();
+        this->world_up = this->up;
 
-        if (forward.angle(up) < EPS || forward.angle(-up) < EPS) {
-            throw std::runtime_error("up vector is parallel to forward vector");
+        if (std::abs(this->forward.dot(this->up)) > 0.999) {
+            std::cerr << "Up vector is too close to forward vector" << '\n';
+            std::cerr << "forward: " << this->forward << ", up: " << this->up << '\n';
             return;
         }
 
-        vec3 left = up.cross(forward).normalize();
-        vec3 true_up = forward.cross(left).normalize();
+        this->res = res;
+        this->fov = fov;
+        this->distance = distance;
+        v_res = {2 * distance * std::tan(fov / 2),
+                 2 * distance * std::tan(fov / 2) * res.y / res.x};
 
-        transform = mat4(0);
-        for (size_t i = 0; i < 4; i++) transform[i][i] = 1;
+        for (int i = 0; i < 4; i++) transform[i * 4 + i] = 1;
 
-#define set_row(i, v)      \
-    transform[i][0] = v.x; \
-    transform[i][1] = v.y; \
-    transform[i][2] = v.z;
+        set_row(0, this->right);
+        set_row(1, this->up);
+        set_row(2, -this->forward);
+        set_row(3, this->pos);
 
-        set_row(0, left);
-        set_row(1, true_up);
-        set_row(2, forward);
-        set_row(3, look_from);
-#undef set_row
-
-        v_res = {2.0f * image_distance * std::tan(fov / 2),
-                 2.0f * image_distance * std::tan(fov / 2) * static_cast<float>(resolution.height) /
-                     resolution.width};
-        cell_size = v_res.width / resolution.width;
+        this->cell_size = v_res.x / res.x;
     }
 
     void get_ray(int w, int h, vec3& ray_o, vec3& ray_d) const {
-        float jitter_w = rng.rand01() * cell_size, jitter_h = rng.rand01() * cell_size;
-        ray_d = {w * cell_size - v_res.width / 2 + jitter_w,
-                 h * cell_size - v_res.height / 2 + jitter_h, -image_distance};
-        ray_d = transform.transform_dir(ray_d).normalize();
-        ray_o = look_from;
+        ray_d = vec3((w + rng.rand01()) * cell_size - v_res.x / 2,
+                     (h + rng.rand01()) * cell_size - v_res.y / 2, -distance);
+        // transform[x * 4 + y] is the same as transform[x][y] if mat4
+        ray_d =
+            vec3(ray_d.dot(vec3(transform[0 * 4 + 0], transform[1 * 4 + 0], transform[2 * 4 + 0])),
+                 ray_d.dot(vec3(transform[0 * 4 + 1], transform[1 * 4 + 1], transform[2 * 4 + 1])),
+                 ray_d.dot(vec3(transform[0 * 4 + 2], transform[1 * 4 + 2], transform[2 * 4 + 2])))
+                .normalize();
+        ray_o = pos;
     }
-};
 
-// orthographic projection camera
-struct OrthoCamera : public Camera {
-    // todo
+    // rotation and movement inspire
+    // by games like minecraft
+    void rotate(Direction dir, float angle) {
+        switch (dir) {
+            case LEFT: {
+                forward = (forward * std::cos(angle) - right * std::sin(angle)).normalize();
+                right = forward.cross(world_up).normalize();
+                up = right.cross(forward).normalize();
+                break;
+            }
+            case RIGHT: {
+                forward = (forward * std::cos(angle) + right * std::sin(angle)).normalize();
+                right = forward.cross(world_up).normalize();
+                up = right.cross(forward).normalize();
+                break;
+            }
+            case UP: {
+                forward = (forward * std::cos(angle) + up * std::sin(angle)).normalize();
+                up = right.cross(forward).normalize();
+                break;
+            }
+            case DOWN: {
+                forward = (forward * std::cos(angle) - up * std::sin(angle)).normalize();
+                up = right.cross(forward).normalize();
+                break;
+            }
+            default:
+                break;
+        }
+        set_row(0, right);
+        set_row(1, up);
+        set_row(2, -forward);
+    }
+    void move(Direction dir, float amount) {
+        // according to world_up
+        switch (dir) {
+            case UP: {
+                pos += world_up * amount;
+                break;
+            }
+            case DOWN: {
+                pos -= world_up * amount;
+                break;
+            }
+            case FORWARD: {
+                vec3 const_forward = world_up.cross(right).normalize();
+                pos += const_forward * amount;
+                break;
+            }
+            case BACKWARD: {
+                vec3 const_forward = world_up.cross(right).normalize();
+                pos -= const_forward * amount;
+                break;
+            }
+            case LEFT: {
+                pos -= right * amount;
+                break;
+            }
+            case RIGHT: {
+                pos += right * amount;
+                break;
+            }
+            default:
+                break;
+        }
+        set_row(3, pos);
+    }
+#undef set_row
 };

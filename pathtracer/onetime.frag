@@ -8,25 +8,19 @@ const float EPS = 1e-6f;
 
 #define MAX_DEPTH 5
 
-#define RED vec4(1, 0, 0, 1)
-#define GREEN vec4(0, 1, 0, 1)
-#define BLUE vec4(0, 0, 1, 1)
-#define YELLOW vec4(1, 1, 0, 1)
-#define BLACK vec4(0, 0, 0, 1)
-#define WHITE vec4(1, 1, 1, 1)
-
-uniform int frame;
-uniform ivec2 resolution;
+uniform int uniform_seed;
 uniform int render_depth;
 uniform int render_samples;
 
-uniform int frame_count;
-uniform sampler2D prev_frame;
-
-uniform vec3 look_from;
-uniform vec2 v_res;
-uniform float image_distance;
-uniform mat4 camera;
+struct Camera {
+    vec3 pos;
+    ivec2 res;
+    vec2 v_res;
+    float cell_size;
+    float image_distance;
+    mat4 transform;
+};
+uniform Camera camera;
 
 const int EMIT = 1;
 const int DIFF = 2; // diffuse
@@ -50,7 +44,7 @@ struct BVHNode {
     int tri_start, tri_end;
 };
 
-#define MAX_TRIANGLES 100
+#define MAX_TRIANGLES 300
 uniform Triangle triangles[MAX_TRIANGLES];
 uniform int tri_indices[MAX_TRIANGLES];
 uniform BVHNode bvh_nodes[MAX_TRIANGLES * 2];
@@ -164,7 +158,8 @@ int i_bvh(vec3 ray_o, vec3 ray_d, out float t) {
         }
     }
 
-    if (ret != -1) t = min_t;
+    if (ret != -1)
+        t = min_t;
     return ret;
 }
 
@@ -252,30 +247,23 @@ vec3 normal_shade(vec3 ray_o, vec3 ray_d) {
 
 vec3 camera_ray(inout uint seed) {
     float w = gl_FragCoord.x, h = gl_FragCoord.y;
-    float cell_size = v_res.x / resolution.x;
-    vec2 jitter = vec2(rand01(seed), rand01(seed)) * cell_size;
+    vec2 jitter = vec2(rand01(seed), rand01(seed)) * camera.cell_size;
 
-    vec3 ray_d = vec3(w * cell_size - v_res.x / 2 + jitter.x, h * cell_size - v_res.y / 2 + jitter.y, -image_distance);
-    ray_d = vec3(dot(ray_d, vec3(camera[0][0], camera[1][0], camera[2][0])), dot(ray_d, vec3(camera[0][1], camera[1][1], camera[2][1])), dot(ray_d, vec3(camera[0][2], camera[1][2], camera[2][2])));
+    vec3 ray_d = vec3(w * camera.cell_size - camera.v_res.x / 2 + jitter.x, h * camera.cell_size - camera.v_res.y / 2 + jitter.y, -camera.image_distance);
+    ray_d = vec3(dot(ray_d, vec3(camera.transform[0][0], camera.transform[1][0], camera.transform[2][0])), dot(ray_d, vec3(camera.transform[0][1], camera.transform[1][1], camera.transform[2][1])), dot(ray_d, vec3(camera.transform[0][2], camera.transform[1][2], camera.transform[2][2])));
     return normalize(ray_d);
 }
 void main() {
     // acts weird if seed = 0
-    uint seed = uint(frame * gl_FragCoord.y + gl_FragCoord.x * resolution.y);
+    uint seed = uint(uniform_seed * gl_FragCoord.y + gl_FragCoord.x * camera.res.y + 1);
 
-    vec3 cur_color = vec3(0);
+    vec3 color = vec3(0);
     for (int i = 0; i < render_samples; i++) {
         vec3 ray_d = camera_ray(seed);
-        vec3 color = trace(look_from, ray_d, render_depth, seed);
-        cur_color += color / render_samples;
+        color += trace(camera.pos, ray_d, render_depth, seed);
     }
-
+    color /= render_samples;
     // gamma correction
-    cur_color = pow(cur_color, vec3(1.0 / 2.2));
-
-    vec2 pos = gl_FragCoord.xy / resolution.xy;
-    vec3 prev_color = texture(prev_frame, pos).rgb;
-
-    vec3 color = mix(prev_color, cur_color, 1 / float(frame_count + 1));
-    gl_FragColor = vec4(color, 1.0);
+    color = pow(color, vec3(1 / 2.2));
+    gl_FragColor = vec4(color, 1);
 }
