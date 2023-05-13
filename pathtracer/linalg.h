@@ -10,24 +10,6 @@ static_assert(__cplusplus >= 201703L, "C++17 required");
 #define EPS 1e-6
 #define FLOAT_INF 1e30
 
-struct vec2 {
-    float x, y;
-
-    vec2() = default;
-    vec2(float v) : x(v), y(v) {}
-    vec2(float x, float y) : x(x), y(y) {}
-
-    vec2 operator*(float o) {
-        return vec2(x * o, y * o);
-    }
-    bool operator==(const vec2& other) {
-        return std::abs(x - other.x) < EPS && std::abs(y - other.y) < EPS;
-    }
-    bool operator!=(const vec2& other) {
-        return !(*this == other);
-    }
-};
-
 struct ivec2 {
     int x, y;
 
@@ -40,6 +22,59 @@ struct ivec2 {
     }
     bool operator!=(const ivec2& other) {
         return !(*this == other);
+    }
+
+    friend ivec2 component_max(const ivec2& a, const ivec2& b) {
+        return ivec2(std::max(a.x, b.x), std::max(a.y, b.y));
+    }
+    friend ivec2 component_min(const ivec2& a, const ivec2& b) {
+        return ivec2(std::min(a.x, b.x), std::min(a.y, b.y));
+    }
+};
+
+struct vec2 {
+    float x, y;
+
+    vec2() = default;
+    vec2(float v) : x(v), y(v) {}
+    vec2(float x, float y) : x(x), y(y) {}
+    vec2(ivec2 v) : x(v.x), y(v.y) {}
+
+#define vec2_op(op)                                   \
+    vec2 operator op(const vec2& o) const {           \
+        return vec2(x op o.x, y op o.y);              \
+    }                                                 \
+    vec2& operator op##=(const vec2& o) {             \
+        x op## = o.x;                                 \
+        y op## = o.y;                                 \
+        return *this;                                 \
+    }                                                 \
+    vec2 operator op(float o) const {                 \
+        return vec2(x op o, y op o);                  \
+    }                                                 \
+    vec2& operator op##=(float o) {                   \
+        x op## = o;                                   \
+        y op## = o;                                   \
+        return *this;                                 \
+    }                                                 \
+    friend vec2 operator op(float o, const vec2& v) { \
+        return vec2(o op v.x, o op v.y);              \
+    }
+    vec2_op(+);
+    vec2_op(-);
+    vec2_op(*);
+    vec2_op(/);
+#undef vec2_op
+
+    bool operator==(const vec2& other) {
+        return std::abs(x - other.x) < EPS && std::abs(y - other.y) < EPS;
+    }
+    bool operator!=(const vec2& other) {
+        return !(*this == other);
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const vec2& v) {
+        return os << "(" << v.x << ", " << v.y << ")";
     }
 };
 

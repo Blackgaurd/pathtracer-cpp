@@ -9,3 +9,13 @@ cc_binary(
     ],
     deps = ["//pathtracer"],
 )
+
+cc_binary(
+    name = "test_gl_wrapper",
+    srcs = ["test_gl_wrapper.cc"],
+    copts = [
+        "-std=c++17",
+        "-O3",
+    ],
+    deps = ["//pathtracer"],
+)

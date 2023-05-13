@@ -1,7 +1,5 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
-#include <chrono>
 #include <iomanip>
 #include <ios>
 #include <iostream>
@@ -100,92 +98,11 @@ bool render_cpu(const Camera& camera, BVH& bvh, int samples, int depth,
     return true;
 }
 
-bool load_shader(sf::Shader& shader, const std::string& shader_code) {
-    if (!sf::Shader::isAvailable()) {
-        std::cerr << "Shaders are not available\n";
-        return false;
-    }
-    if (!shader.loadFromMemory(shader_code, sf::Shader::Fragment)) {
-        std::cerr << "Failed to load shader\n";
-        return false;
-    }
-    return true;
+int ceildiv(int a, int b) {
+    return (a + b - 1) / b;
 }
-void set_uniform(sf::Shader& shader, const std::string& name, float x) {
-    shader.setUniform(name, x);
-}
-void set_uniform(sf::Shader& shader, const std::string& name, int x) {
-    shader.setUniform(name, x);
-}
-void set_uniform(sf::Shader& shader, const std::string& name, const vec3& v3) {
-    shader.setUniform(name, sf::Glsl::Vec3(v3.x, v3.y, v3.z));
-}
-void set_uniform(sf::Shader& shader, const std::string& name, const vec2& v2) {
-    shader.setUniform(name, sf::Glsl::Vec2(v2.x, v2.y));
-}
-void set_uniform(sf::Shader& shader, const std::string& name, const ivec2& v2) {
-    shader.setUniform(name, sf::Glsl::Ivec2(v2.x, v2.y));
-}
-void set_uniform(sf::Shader& shader, const Camera& camera) {
-    set_uniform(shader, "camera.pos", camera.pos);
-    set_uniform(shader, "camera.res", camera.res);
-    set_uniform(shader, "camera.v_res", camera.v_res);
-    set_uniform(shader, "camera.cell_size", camera.cell_size);
-    set_uniform(shader, "camera.image_distance", camera.distance);
-    shader.setUniform("camera.transform", sf::Glsl::Mat4(camera.transform.data()));
-}
-void set_uniform(sf::Shader& shader, const BVH& bvh) {
-    // load triangle indices
-    for (size_t i = 0; i < bvh.tri_idx.size(); i++) {
-        std::string name = "tri_indices[" + std::to_string(i) + "]";
-        shader.setUniform(name, bvh.tri_idx[i]);
-    }
-
-    // load the triangles
-    for (size_t i = 0; i < bvh.triangles.size(); i++) {
-        const Triangle& tri = bvh.triangles[i];
-        std::string name = "triangles[" + std::to_string(i) + "].";
-        set_uniform(shader, name + "v1", tri.v1);
-        set_uniform(shader, name + "v2", tri.v2);
-        set_uniform(shader, name + "v3", tri.v3);
-        set_uniform(shader, name + "aabb.lb", tri.aabb.lb);
-        set_uniform(shader, name + "aabb.rt", tri.aabb.rt);
-
-        name += "material.";
-        set_uniform(shader, name + "type", tri.material.type);
-        set_uniform(shader, name + "color", tri.material.color);
-        set_uniform(shader, name + "emit_color", tri.material.emit_color);
-        set_uniform(shader, name + "roughness", tri.material.roughness);
-    }
-
-    // load bvh nodes
-    for (size_t i = 0; i < bvh.nodes.size(); i++) {
-        const BVHNode& node = bvh.nodes[i];
-        std::string name = "bvh_nodes[" + std::to_string(i) + "].";
-        set_uniform(shader, name + "left", node.left);
-        set_uniform(shader, name + "right", node.right);
-        set_uniform(shader, name + "tri_start", node.tri_start);
-        set_uniform(shader, name + "tri_end", node.tri_end);
-        set_uniform(shader, name + "aabb.lb", node.aabb.lb);
-        set_uniform(shader, name + "aabb.rt", node.aabb.rt);
-    }
-}
-bool render_gpu(const Camera& camera, BVH& bvh, int samples, int depth, const std::string& filename,
-                int frame_samples = 10, int fps = 60) {
-    // make sure this task takes less than 100ms as to not
-    // make the operating system think the program is unresponsive
-    // as it runs on the gpu
-
-    // solution:
-    // split up the image into a grid of cells
-    // and render the grids seperately
-
-    // it looks like the .draw() function only pushes a
-    // command onto the gpu queue and returns immediately
-    // and the rendering is done after all the .draw() calls
-    // which is why the gpu is still blocking the main thread
-    // after the .draw() calls
-
+bool render_gpu(const Camera& camera, BVH& bvh, int samples, int depth, const ivec2& chunk_size,
+                const std::string& filename) {
     if (bvh.empty()) {
         std::cerr << "No triangles in scene.\n";
         return false;
@@ -195,61 +112,35 @@ bool render_gpu(const Camera& camera, BVH& bvh, int samples, int depth, const st
         bvh.build();
     }
 
-    sf::Shader pathtracer;
-    if (!load_shader(pathtracer, ONETIME_SHADER)) return false;
-
-    set_uniform(pathtracer, "render_depth", depth);
-    set_uniform(pathtracer, "render_samples", samples);
-    set_uniform(pathtracer, camera);
-    set_uniform(pathtracer, bvh);
-
-    sf::RenderTexture texture1, texture2, texture3, texture4;
-    texture1.create(camera.res.x, camera.res.y);
-    texture2.create(camera.res.x, camera.res.y);
-    texture3.create(camera.res.x, camera.res.y);
-    texture4.create(camera.res.x, camera.res.y);
-    sf::RectangleShape rect(sf::Vector2f(400, 400));
-
-    pathtracer.setUniform("uniform_seed", 0);
+    // render in chunks as to not crash the operating system
+    int total_chunks = ceildiv(camera.res.x, chunk_size.x) * ceildiv(camera.res.y, chunk_size.y);
+    int rendered_chunks = 0;
+    PathtraceShader shader = PathtraceShader(camera, bvh, samples, depth);
 
     Timer timer;
     timer.start();
-    texture1.clear();
-    texture1.draw(rect, &pathtracer);
-    texture1.display();
-    texture1.resetGLStates();
-    // std::this_thread::sleep_for(std::chrono::seconds(5));
-    rect.move(400, 0);
-    texture2.clear();
-    texture2.draw(rect, &pathtracer);
-    texture2.display();
-    texture2.resetGLStates();
-    // std::this_thread::sleep_for(std::chrono::seconds(5));
-    rect.move(-400, 400);
-    texture3.clear();
-    texture3.draw(rect, &pathtracer);
-    texture3.display();
-    texture3.resetGLStates();
-    // std::this_thread::sleep_for(std::chrono::seconds(5));
-    rect.move(400, 0);
-    texture4.clear();
-    texture4.draw(rect, &pathtracer);
-    texture4.display();
-    texture4.resetGLStates();
+    std::cout << "Rendered: 0/" << total_chunks << " chunks.";
+    for (int i = 0; i < camera.res.x; i += chunk_size.x) {
+        for (int j = 0; j < camera.res.y; j += chunk_size.y) {
+            ivec2 top_left = ivec2(i, j);
+            ivec2 bottom_right = ivec2(i + chunk_size.x, j + chunk_size.y);
+            shader.draw_rect(top_left, bottom_right);
+            shader.finish();
 
-    // texture.display();
+            rendered_chunks++;
+            std::cout << "\rRendered: " << rendered_chunks << '/' << total_chunks << " chunks."
+                      << std::flush;
+        }
+    }
     float seconds = timer.seconds();
 
     std::ios old_state(nullptr);
     old_state.copyfmt(std::cout);
-    std::cout << std::fixed << std::setprecision(5);
-    std::cout << "Done in " << seconds << " seconds.\n";
+    std::cout << std::fixed << std::setprecision(2);
+    std::cout << "\nDone in " << seconds << " seconds.\n";
     std::cout.copyfmt(old_state);
 
-    texture1.getTexture().copyToImage().saveToFile(filename + "1.png");
-    texture2.getTexture().copyToImage().saveToFile(filename + "2.png");
-    texture3.getTexture().copyToImage().saveToFile(filename + "3.png");
-    texture4.getTexture().copyToImage().saveToFile(filename + "4.png");
+    shader.save_png(filename);
     std::cout << "Saved to " << filename << '\n';
 
     return true;

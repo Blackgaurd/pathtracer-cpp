@@ -1,4 +1,4 @@
-#version 330
+#version 330 core
 
 const float PI = 3.1415926538f;
 const float PI_2 = 1.5707963268f;
@@ -8,9 +8,13 @@ const float EPS = 1e-6f;
 
 #define MAX_DEPTH 5
 
-uniform int uniform_seed;
-uniform int render_depth;
 uniform int render_samples;
+uniform int render_depth;
+
+#ifdef REALTIME
+uniform int frame;
+uniform sampler2D prev_frame;
+#endif
 
 struct Camera {
     vec3 pos;
@@ -34,7 +38,6 @@ struct AABB {
     vec3 lb, rt;
 };
 struct Triangle {
-    AABB aabb;
     vec3 v1, v2, v3;
     Material material;
 };
@@ -255,15 +258,29 @@ vec3 camera_ray(inout uint seed) {
 }
 void main() {
     // acts weird if seed = 0
-    uint seed = uint(uniform_seed * gl_FragCoord.y + gl_FragCoord.x * camera.res.y + 1);
+    #ifdef REALTIME
+    uint seed = uint(frame * gl_FragCoord.y + gl_FragCoord.x * camera.res.y + 1);
+    #else
+    uint seed = uint(gl_FragCoord.y + gl_FragCoord.x * camera.res.y + 1);
+    #endif
 
-    vec3 color = vec3(0);
+    vec3 cur_color = vec3(0);
     for (int i = 0; i < render_samples; i++) {
         vec3 ray_d = camera_ray(seed);
-        color += trace(camera.pos, ray_d, render_depth, seed);
+        vec3 color = trace(camera.pos, ray_d, render_depth, seed);
+        cur_color += color / render_samples;
     }
-    color /= render_samples;
+
     // gamma correction
-    color = pow(color, vec3(1 / 2.2));
-    gl_FragColor = vec4(color, 1);
+    cur_color = pow(cur_color, vec3(1.0 / 2.2));
+
+    #ifdef REALTIME
+    vec2 pos = gl_FragCoord.xy / camera.res.xy;
+    vec3 prev_color = texture(prev_frame, pos).rgb;
+
+    vec3 color = mix(prev_color, cur_color, 1 / float(frame));
+    gl_FragColor = vec4(color, 1.0);
+    #else
+    gl_FragColor = vec4(cur_color, 1.0);
+    #endif
 }

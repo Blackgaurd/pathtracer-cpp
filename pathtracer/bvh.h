@@ -78,6 +78,8 @@ struct BVH {
     }
     void build() {
         // stack based building algorithm
+        if (built) return;
+
         tri_idx.resize(triangles.size());
         for (int i = 0; i < int(tri_idx.size()); i++) tri_idx[i] = i;
 
