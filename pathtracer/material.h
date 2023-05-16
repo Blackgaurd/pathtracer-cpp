@@ -26,9 +26,9 @@ vec3 specular_sample(const vec3 &ray_d, const vec3 &normal, float roughness) {
 
 struct Material {
     enum Type {
-        DIFFUSE,
-        EMIT,
-        SPECULAR,
+        EMIT = 1,
+        DIFFUSE = 2,
+        SPECULAR = 3,
     } type;
     vec3 color;
     vec3 emit_color;

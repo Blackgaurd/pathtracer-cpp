@@ -40,7 +40,7 @@ vec3 trace(const BVH& bvh, const vec3& ray_o, const vec3& ray_d, int depth) {
         return tri.material.emit_color;
     }
 
-    vec3 hit_p = ray_o + ray_d + hit_t;
+    vec3 hit_p = ray_o + ray_d * hit_t;
     vec3 hit_n = tri.normal(ray_d, hit_p);
 
     vec3 new_d = tri.material.reflected_dir(ray_d, hit_n);
