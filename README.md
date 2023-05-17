@@ -8,19 +8,18 @@ Cornell box rendered at 10,000 spp. Resolution: 1024x1024, time: 112 seconds (~5
 
 ![box](examples/cornell_box.png)
 
+Cornell box-esque scene with specular reflection walls of increasing roughness, rendered at 10,000 spp. Resolution: 1024x1024, time: 230 seconds (~50 billion rays).
+
+![box0](examples/mod0.png)
+![box0.05](examples/mod0.05.png)
+![box0.1](examples/mod0.1.png)
+![box0.3](examples/mod0.3.png)
+![box0.5](examples/mod0.5.png)
+![box0.8](examples/mod0.8.png)
+
 ## CPU vs GPU Rendering
 
-CPU rendering runs on a single thread. GPU rendering is done in "chunks" of rectangles to split up the rendering task to smaller jobs as to not block the GPU. The speed increase from rendering on GPU can vary drastically depending on the scene and settings. Here are some benchmarks:
-
-Benchmark system specs:
-
-- CPU: Intel i5-12600K 4.9GHz
-- GPU: AMD Radeon RX 6650XT
-
-Cornell box on CPU:
-
-![gif](benchmark/spp/spp.gif)
-![chart](benchmark/spp/graph.png)
+CPU rendering runs on a single thread. GPU rendering is done in "chunks" of rectangles to split up the rendering task to smaller jobs as to not block the GPU. The speed increase from rendering on GPU can vary drastically depending on the scene, render settings, and hardware.
 
 ## Building
 

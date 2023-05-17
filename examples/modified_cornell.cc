@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <vector>
 
 #include "pathtracer/pathtracer.h"
 
@@ -8,79 +9,101 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    Material white_diffuse = Material(Material::DIFFUSE, 1, 0, 0);
-    Material white_emit = Material(Material::EMIT, 0, 1, 0);
-    Material green_diffuse = Material(Material::DIFFUSE, vec3(0, 1, 0), 0, 0);
-    Material red_diffuse = Material(Material::DIFFUSE, vec3(1, 0, 0), 0, 0);
+    Camera camera = Camera(vec3(100, 400, 0), vec3(0.5, -0.5, 1), vec3(0, 1, 0), ivec2(1024, 1024),
+                           80 * DEG2RAD, 1);
+    std::vector<float> roughness = {0, 0.05, 0.1, 0.3, 0.5, 0.8};
+    for (float r : roughness) {
+        Material white_emit = Material(Material::EMIT, 0, 1, 0);
+        Material red_diffuse = Material(Material::DIFFUSE, vec3(1, 0, 0), 0, 0);
+        Material green_diffuse = Material(Material::DIFFUSE, vec3(0, 1, 0), 0, 0);
+        Material white_specular = Material(Material::SPECULAR, 1, 0, r);
 
-    BVH bvh;
-    vec3 f1 = vec3(552.8, 0, 0), f2 = vec3(0, 0, 0), f3 = vec3(0, 0, 559.2),
-         f4 = vec3(549.6, 0, 559.2);
-    bvh.add_triangle(Triangle(f1, f2, f3, white_diffuse));
-    bvh.add_triangle(Triangle(f4, f3, f1, white_diffuse));
-    vec3 l1 = vec3(343, 548.7, 227), l2 = vec3(343, 548.7, 332), l3 = vec3(213, 548.7, 332),
-         l4 = vec3(213, 548.7, 227);
-    bvh.add_triangle(Triangle(l1, l2, l3, white_emit));
-    bvh.add_triangle(Triangle(l4, l3, l1, white_emit));
-    vec3 c1 = vec3(556, 548.8, 0), c2 = vec3(0, 548.8, 0), c3 = vec3(0, 548.8, 559.2),
-         c4 = vec3(556.0, 548.8, 559.2);
-    bvh.add_triangle(Triangle(c1, c2, c3, white_diffuse));
-    bvh.add_triangle(Triangle(c4, c3, c1, white_diffuse));
-    vec3 b1 = vec3(549.6, 0, 559.2), b2 = vec3(0, 0, 559.2), b3 = vec3(0, 548.8, 559.2),
-         b4 = vec3(556, 548.8, 559.2);
-    bvh.add_triangle(Triangle(b1, b2, b3, white_diffuse));
-    bvh.add_triangle(Triangle(b4, b3, b1, white_diffuse));
-    vec3 r1 = vec3(0, 0, 559.2), r2 = vec3(0, 0, 0), r3 = vec3(0, 548.8, 0),
-         r4 = vec3(0, 548.8, 559.2);
-    bvh.add_triangle(Triangle(r1, r2, r3, green_diffuse));
-    bvh.add_triangle(Triangle(r4, r3, r1, green_diffuse));
-    vec3 lw1 = vec3(552.8, 0, 0), lw2 = vec3(549.6, 0, 559.2), lw3 = vec3(556, 548.8, 559.2),
-         lw4 = vec3(556, 548.8, 0);
-    bvh.add_triangle(Triangle(lw1, lw2, lw3, red_diffuse));
-    bvh.add_triangle(Triangle(lw4, lw3, lw1, red_diffuse));
-    vec3 sb1 = vec3(130, 165, 65), sb2 = vec3(82, 165, 225), sb3 = vec3(240, 165, 272),
-         sb4 = vec3(290, 165, 114);
-    bvh.add_triangle(Triangle(sb1, sb2, sb3, white_diffuse));
-    bvh.add_triangle(Triangle(sb4, sb3, sb1, white_diffuse));
-    vec3 sb5 = vec3(290, 0, 114), sb6 = vec3(290, 165, 114), sb7 = vec3(240, 165, 272),
-         sb8 = vec3(240, 0, 272);
-    bvh.add_triangle(Triangle(sb5, sb6, sb7, white_diffuse));
-    bvh.add_triangle(Triangle(sb8, sb7, sb5, white_diffuse));
-    vec3 sb9 = vec3(130, 0, 65), sb10 = vec3(130, 165, 65), sb11 = vec3(290, 165, 114),
-         sb12 = vec3(290, 0, 114);
-    bvh.add_triangle(Triangle(sb9, sb10, sb11, white_diffuse));
-    bvh.add_triangle(Triangle(sb12, sb11, sb9, white_diffuse));
-    vec3 sb13 = vec3(82, 0, 225), sb14 = vec3(82, 165, 225), sb15 = vec3(130, 165, 65),
-         sb16 = vec3(130, 0, 65);
-    bvh.add_triangle(Triangle(sb13, sb14, sb15, white_diffuse));
-    bvh.add_triangle(Triangle(sb16, sb15, sb13, white_diffuse));
-    vec3 sb17 = vec3(240, 0, 272), sb18 = vec3(240, 165, 272), sb19 = vec3(82, 165, 225),
-         sb20 = vec3(82, 0, 225);
-    bvh.add_triangle(Triangle(sb17, sb18, sb19, white_diffuse));
-    bvh.add_triangle(Triangle(sb20, sb19, sb17, white_diffuse));
+        BVH bvh;
+        // floor
+        vec3 f1 = vec3(552.8, 0, 0), f2 = vec3(0, 0, 0), f3 = vec3(0, 0, 559.2),
+             f4 = vec3(549.6, 0, 559.2);
+        bvh.add_triangle(Triangle(f1, f2, f3, white_specular));
+        bvh.add_triangle(Triangle(f4, f3, f1, white_specular));
 
-    vec3 tb1 = vec3(423, 330, 247), tb2 = vec3(265, 330, 296), tb3 = vec3(314, 330, 456),
-         tb4 = vec3(472, 330, 406);
-    bvh.add_triangle(Triangle(tb1, tb2, tb3, white_diffuse));
-    bvh.add_triangle(Triangle(tb1, tb3, tb4, white_diffuse));
-    vec3 tb5 = vec3(423, 0, 247), tb6 = vec3(423, 330, 247), tb7 = vec3(472, 330, 406),
-         tb8 = vec3(472, 0, 406);
-    bvh.add_triangle(Triangle(tb5, tb6, tb7, white_diffuse));
-    bvh.add_triangle(Triangle(tb5, tb7, tb8, white_diffuse));
-    vec3 tb9 = vec3(472, 0, 406), tb10 = vec3(472, 330, 406), tb11 = vec3(314, 330, 456),
-         tb12 = vec3(314, 0, 456);
-    bvh.add_triangle(Triangle(tb9, tb10, tb11, white_diffuse));
-    bvh.add_triangle(Triangle(tb9, tb11, tb12, white_diffuse));
-    vec3 tb13 = vec3(314, 0, 456), tb14 = vec3(314, 330, 456), tb15 = vec3(265, 330, 296),
-         tb16 = vec3(265, 0, 296);
-    bvh.add_triangle(Triangle(tb13, tb14, tb15, white_diffuse));
-    bvh.add_triangle(Triangle(tb13, tb15, tb16, white_diffuse));
-    vec3 tb17 = vec3(265, 0, 296), tb18 = vec3(265, 330, 296), tb19 = vec3(423, 330, 247),
-         tb20 = vec3(423, 0, 247);
-    bvh.add_triangle(Triangle(tb17, tb18, tb19, white_diffuse));
-    bvh.add_triangle(Triangle(tb17, tb19, tb20, white_diffuse));
+        // light
+        vec3 l1 = vec3(343, 548.7, 227), l2 = vec3(343, 548.7, 332), l3 = vec3(213, 548.7, 332),
+             l4 = vec3(213, 548.7, 227);
+        bvh.add_triangle(Triangle(l1, l2, l3, white_emit));
+        bvh.add_triangle(Triangle(l4, l3, l1, white_emit));
 
-    Camera camera =
-        Camera(vec3(278, 278, -500), vec3(0, 0, 1), vec3(0, 1, 0), ivec2(1024, 1024), 60 * DEG2RAD, 1);
-    render_gpu(camera, bvh, 10000, 5, ivec2(100, 100), argv[1]);
+        // ceiling
+        vec3 c1 = vec3(556, 548.8, 0), c2 = vec3(0, 548.8, 0), c3 = vec3(0, 548.8, 559.2),
+             c4 = vec3(556.0, 548.8, 559.2);
+        bvh.add_triangle(Triangle(c1, c2, c3, white_specular));
+        bvh.add_triangle(Triangle(c4, c3, c1, white_specular));
+
+        // back wall
+        vec3 b1 = vec3(549.6, 0, 559.2), b2 = vec3(0, 0, 559.2), b3 = vec3(0, 548.8, 559.2),
+             b4 = vec3(556, 548.8, 559.2);
+        bvh.add_triangle(Triangle(b1, b2, b3, white_specular));
+        bvh.add_triangle(Triangle(b4, b3, b1, white_specular));
+
+        // front wall
+        vec3 fw1 = vec3(556, 0, 0), fw2 = vec3(0, 0, 0), fw3 = vec3(0, 548.8, 0),
+             fw4 = vec3(556, 548.8, 0);
+        bvh.add_triangle(Triangle(fw1, fw2, fw3, white_specular));
+        bvh.add_triangle(Triangle(fw4, fw3, fw1, white_specular));
+
+        // right wall
+        vec3 r1 = vec3(0, 0, 559.2), r2 = vec3(0, 0, 0), r3 = vec3(0, 548.8, 0),
+             r4 = vec3(0, 548.8, 559.2);
+        bvh.add_triangle(Triangle(r1, r2, r3, white_specular));
+        bvh.add_triangle(Triangle(r4, r3, r1, white_specular));
+
+        // left wall
+        vec3 lw1 = vec3(552.8, 0, 0), lw2 = vec3(549.6, 0, 559.2), lw3 = vec3(556, 548.8, 559.2),
+             lw4 = vec3(556, 548.8, 0);
+        bvh.add_triangle(Triangle(lw1, lw2, lw3, white_specular));
+        bvh.add_triangle(Triangle(lw4, lw3, lw1, white_specular));
+
+        // short box
+        vec3 sb1 = vec3(130, 165, 65), sb2 = vec3(82, 165, 225), sb3 = vec3(240, 165, 272),
+             sb4 = vec3(290, 165, 114);
+        bvh.add_triangle(Triangle(sb1, sb2, sb3, red_diffuse));
+        bvh.add_triangle(Triangle(sb4, sb3, sb1, red_diffuse));
+        vec3 sb5 = vec3(290, 0, 114), sb6 = vec3(290, 165, 114), sb7 = vec3(240, 165, 272),
+             sb8 = vec3(240, 0, 272);
+        bvh.add_triangle(Triangle(sb5, sb6, sb7, red_diffuse));
+        bvh.add_triangle(Triangle(sb8, sb7, sb5, red_diffuse));
+        vec3 sb9 = vec3(130, 0, 65), sb10 = vec3(130, 165, 65), sb11 = vec3(290, 165, 114),
+             sb12 = vec3(290, 0, 114);
+        bvh.add_triangle(Triangle(sb9, sb10, sb11, red_diffuse));
+        bvh.add_triangle(Triangle(sb12, sb11, sb9, red_diffuse));
+        vec3 sb13 = vec3(82, 0, 225), sb14 = vec3(82, 165, 225), sb15 = vec3(130, 165, 65),
+             sb16 = vec3(130, 0, 65);
+        bvh.add_triangle(Triangle(sb13, sb14, sb15, red_diffuse));
+        bvh.add_triangle(Triangle(sb16, sb15, sb13, red_diffuse));
+        vec3 sb17 = vec3(240, 0, 272), sb18 = vec3(240, 165, 272), sb19 = vec3(82, 165, 225),
+             sb20 = vec3(82, 0, 225);
+        bvh.add_triangle(Triangle(sb17, sb18, sb19, red_diffuse));
+        bvh.add_triangle(Triangle(sb20, sb19, sb17, red_diffuse));
+
+        // tall box
+        vec3 tb1 = vec3(423, 330, 247), tb2 = vec3(265, 330, 296), tb3 = vec3(314, 330, 456),
+             tb4 = vec3(472, 330, 406);
+        bvh.add_triangle(Triangle(tb1, tb2, tb3, green_diffuse));
+        bvh.add_triangle(Triangle(tb1, tb3, tb4, green_diffuse));
+        vec3 tb5 = vec3(423, 0, 247), tb6 = vec3(423, 330, 247), tb7 = vec3(472, 330, 406),
+             tb8 = vec3(472, 0, 406);
+        bvh.add_triangle(Triangle(tb5, tb6, tb7, green_diffuse));
+        bvh.add_triangle(Triangle(tb5, tb7, tb8, green_diffuse));
+        vec3 tb9 = vec3(472, 0, 406), tb10 = vec3(472, 330, 406), tb11 = vec3(314, 330, 456),
+             tb12 = vec3(314, 0, 456);
+        bvh.add_triangle(Triangle(tb9, tb10, tb11, green_diffuse));
+        bvh.add_triangle(Triangle(tb9, tb11, tb12, green_diffuse));
+        vec3 tb13 = vec3(314, 0, 456), tb14 = vec3(314, 330, 456), tb15 = vec3(265, 330, 296),
+             tb16 = vec3(265, 0, 296);
+        bvh.add_triangle(Triangle(tb13, tb14, tb15, green_diffuse));
+        bvh.add_triangle(Triangle(tb13, tb15, tb16, green_diffuse));
+        vec3 tb17 = vec3(265, 0, 296), tb18 = vec3(265, 330, 296), tb19 = vec3(423, 330, 247),
+             tb20 = vec3(423, 0, 247);
+        bvh.add_triangle(Triangle(tb17, tb18, tb19, green_diffuse));
+        bvh.add_triangle(Triangle(tb17, tb19, tb20, green_diffuse));
+        render_gpu(camera, bvh, 10000, 5, ivec2(64, 64), argv[1] + std::to_string(r) + ".png");
+    }
 }

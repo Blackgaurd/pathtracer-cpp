@@ -8,7 +8,7 @@ const float FLOAT_INF = 1e30f;
 const float BIAS = 1e-4f;
 const float EPS = 1e-6f;
 
-#define MAX_DEPTH 5
+#define MAX_DEPTH 20
 
 uniform int render_samples;
 uniform int render_depth;

@@ -375,8 +375,11 @@ void render_realtime(const Camera& camera, BVH& bvh, int depth, int frame_sample
         texture.draw(rect, &shader);
         texture.display();  // what does this even do?
 
-        window.setTitle(std::to_string(cam.forward.x) + ", " + std::to_string(cam.forward.y) +
-                        ", " + std::to_string(cam.forward.z));
+        std::string title = "pos: " + std::to_string(cam.pos.x) + ", " +
+                            std::to_string(cam.pos.y) + ", " + std::to_string(cam.pos.z) +
+                            " | forward: " + std::to_string(cam.forward.x) + ", " +
+                            std::to_string(cam.forward.y) + ", " + std::to_string(cam.forward.z);
+        window.setTitle(title);
         window.clear();
         window.draw(sf::Sprite(texture.getTexture()));
         window.display();

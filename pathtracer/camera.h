@@ -35,7 +35,7 @@ struct Camera {
         this->pos = pos;
         this->forward = forward.normalize();
         this->right = forward.cross(up).normalize();
-        this->up = right.cross(forward).normalize();
+        this->up = up.normalize();
         this->world_up = this->up;
 
         if (std::abs(this->forward.dot(this->up)) > 0.999) {
@@ -75,7 +75,6 @@ struct Camera {
     // rotation and movement inspire
     // by games like minecraft
     void rotate(Direction dir, float angle) {
-        std::cout << "rotate " << dir << " " << angle << '\n';
         switch (dir) {
             case LEFT: {
                 forward = (forward * std::cos(angle) - right * std::sin(angle)).normalize();
