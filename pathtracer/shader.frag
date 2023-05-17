@@ -1,5 +1,7 @@
 #version 330 core
 
+precision mediump float;
+
 const float PI = 3.1415926538f;
 const float PI_2 = 1.5707963268f;
 const float FLOAT_INF = 1e30f;
@@ -170,19 +172,8 @@ vec3 reflect_d(vec3 ray_d, vec3 normal, int tri_id, inout uint seed) {
     // brdf for different materials
     int type = triangles[tri_id].material.type;
 
-    // perfect hemispherical diffuse
-    // not sure how to implement gaussian distribution
-    // todo: make this the default
-    if (type == DIFF) {
-        float u = rand01(seed), v = rand01(seed);
-        float theta = acos(2 * u - 1) - PI_2;
-        float phi = 2 * PI * v;
-        vec3 sample = vec3(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta));
-        return sign(dot(sample, normal)) * sample;
-    }
-
-    // specular with noise
     if (type == SPEC) {
+        // specular with noise
         vec3 reflected = reflect(ray_d, normal);
         float roughness = triangles[tri_id].material.roughness;
         vec3 ret;
@@ -191,6 +182,13 @@ vec3 reflect_d(vec3 ray_d, vec3 normal, int tri_id, inout uint seed) {
             ret = normalize(reflected + jitter);
         } while (dot(ret, normal) < 0);
         return ret;
+    } else {
+        // lambertian diffuse
+        float u = rand01(seed), v = rand01(seed);
+        float theta = acos(2 * u - 1) - PI_2;
+        float phi = 2 * PI * v;
+        vec3 sample = vec3(cos(theta) * cos(phi), cos(theta) * sin(phi), sin(theta));
+        return sign(dot(sample, normal)) * sample;
     }
 }
 
