@@ -338,13 +338,8 @@ struct PathtraceShader {
             bvh.build();
         }
 
-        std::cout << "camera\n";
         set_camera(camera);
-
-        std::cout << "bvh\n";
         set_bvh(bvh);
-
-        std::cout << "render\n";
         set_uniform("render_samples", samples);
         set_uniform("render_depth", depth);
     }
