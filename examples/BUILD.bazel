@@ -1,0 +1,11 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "cornell_box",
+    srcs = ["cornell_box.cc"],
+    copts = [
+        "-std=c++17",
+        "-O3",
+    ],
+    deps = ["//pathtracer"],
+)

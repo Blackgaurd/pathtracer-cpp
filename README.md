@@ -1,22 +1,26 @@
 # Path Tracer
 
-Path tracing algorithm implemented in C++ that supports the following:
-
-- object-oriented design
-- look from/at camera model
-- triangles
-- lambertian diffuse
-- specular lighting
-- emission and area lights
-- global illumination
-- soft shadows
-- BVH acceleration
-- CPU/GPU rendering
-- OBJ file loading
+Path tracing algorithm implemented in C++ that supports rendering on the CPU and GPU using OpenGL. Uses BVH build with SAH as an acceleration structure.
 
 ## Examples
 
-to do
+Cornell box rendered at 10,000 spp. Resolution: 1024x1024, time: 112 seconds (~50 billion rays).
+
+![box](examples/cornell_box.png)
+
+## CPU vs GPU Rendering
+
+CPU rendering runs on a single thread. GPU rendering is done in "chunks" of rectangles to split up the rendering task to smaller jobs as to not block the GPU. The speed increase from rendering on GPU can vary drastically depending on the scene and settings. Here are some benchmarks:
+
+Benchmark system specs:
+
+- CPU: Intel i5-12600K 4.9GHz
+- GPU: AMD Radeon RX 6650XT
+
+Cornell box on CPU:
+
+![gif](benchmark/spp/spp.gif)
+![chart](benchmark/spp/graph.png)
 
 ## Building
 
@@ -38,5 +42,3 @@ And to run the executable:
   - punctual (point) light sources
   - light attenuation
 - skybox
-
-- use OpenGL for GPU rendering instead of SFML (idk why shader only allows ~350 triangles)
