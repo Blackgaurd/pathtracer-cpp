@@ -13,8 +13,7 @@
 // glsl sources are const char* and
 // not std::string because of the
 // way they are passed to OpenGL
-const char* vert_source = R"glsl(
-#version 330 core
+const char* VERT_SOURCE = R"glsl(#version 330 core
 
 attribute vec2 position;
 
@@ -23,8 +22,7 @@ void main() {
 }
 )glsl";
 
-const char* frag_source = R"glsl(
-#version 330 core
+const char* FRAG_SOURCE = R"glsl(#version 330 core
 
 precision mediump float;
 
@@ -302,7 +300,7 @@ void main() {
     vec2 pos = gl_FragCoord.xy / camera.res.xy;
     vec3 prev_color = texture(prev_frame, pos).rgb;
 
-    vec3 color = mix(prev_color, cur_color, 1 / float(frame));
+    vec3 color = mix(prev_color, cur_color, 1 / float(frame + 1));
     gl_FragColor = vec4(color, 1.0);
     #else
     gl_FragColor = vec4(cur_color, 1.0);
@@ -474,13 +472,13 @@ struct PathtraceShader {
 
         // compile shaders
         vert_shader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vert_shader, 1, &vert_source, NULL);
+        glShaderSource(vert_shader, 1, &VERT_SOURCE, NULL);
         glCompileShader(vert_shader);
         frag_shader = glCreateShader(GL_FRAGMENT_SHADER);
 #ifdef DEBUG
         glShaderSource(frag_shader, 1, &test_frag_source, NULL);
 #else
-        glShaderSource(frag_shader, 1, &frag_source, NULL);
+        glShaderSource(frag_shader, 1, &FRAG_SOURCE, NULL);
 #endif
         glCompileShader(frag_shader);
         shader = glCreateProgram();

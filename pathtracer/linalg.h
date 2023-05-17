@@ -7,6 +7,7 @@ static_assert(__cplusplus >= 201703L, "C++17 required");
 #include <cmath>
 #include <ostream>
 
+#define DEG2RAD M_PI / 180
 #define EPS 1e-6
 #define FLOAT_INF 1e30
 

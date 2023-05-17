@@ -11,8 +11,8 @@ cc_binary(
 )
 
 cc_binary(
-    name = "test_gl_wrapper",
-    srcs = ["test_gl_wrapper.cc"],
+    name = "test_realtime",
+    srcs = ["test_realtime.cc"],
     copts = [
         "-std=c++17",
         "-O3",

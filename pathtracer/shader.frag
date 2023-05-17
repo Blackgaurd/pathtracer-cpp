@@ -276,7 +276,7 @@ void main() {
     vec2 pos = gl_FragCoord.xy / camera.res.xy;
     vec3 prev_color = texture(prev_frame, pos).rgb;
 
-    vec3 color = mix(prev_color, cur_color, 1 / float(frame));
+    vec3 color = mix(prev_color, cur_color, 1 / float(frame + 1));
     gl_FragColor = vec4(color, 1.0);
     #else
     gl_FragColor = vec4(cur_color, 1.0);

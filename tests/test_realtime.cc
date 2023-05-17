@@ -4,7 +4,7 @@
 
 int main(int argc, char** argv) {
     if (argc != 2) {
-        std::cout << "Usage: " << argv[0] << " <filename>" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <screenshot dir>" << std::endl;
         return 1;
     }
 
@@ -19,6 +19,5 @@ int main(int argc, char** argv) {
                               Material(Material::EMIT, vec3(0, 0, 1), 1, 0)));
     bvh.build();
 
-    render_gpu(camera, bvh, 500, 5, ivec2(200, 200), argv[1] + std::string(".gpu.png"));
-    render_cpu(camera, bvh, 500, 5, argv[1] + std::string(".cpu.png"));
+    render_realtime(camera, bvh, 5, 15, argv[1]);
 }

@@ -75,6 +75,7 @@ struct Camera {
     // rotation and movement inspire
     // by games like minecraft
     void rotate(Direction dir, float angle) {
+        std::cout << "rotate " << dir << " " << angle << '\n';
         switch (dir) {
             case LEFT: {
                 forward = (forward * std::cos(angle) - right * std::sin(angle)).normalize();
