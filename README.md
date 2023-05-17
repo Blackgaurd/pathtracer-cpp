@@ -1,6 +1,6 @@
 # Path Tracer
 
-Path tracing algorithm implemented in C++ that supports rendering on the CPU and GPU using OpenGL. Uses BVH build with SAH as an acceleration structure.
+Path tracing algorithm implemented in C++ that supports rendering on the CPU and GPU using OpenGL. Uses BVH built with SAH as an acceleration structure.
 
 ## Examples
 
