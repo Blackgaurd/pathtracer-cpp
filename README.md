@@ -12,7 +12,7 @@ Implementation of the path tracing algorithm written in C++ and GLSL. Here are s
   - Emitting/light materials of variable brightness and colour.
   - Lambertian diffuse or matte surfaces using random hemisphere sampling BRDF.
   - Specular diffuse or mirror surfaces of variable roughness using a combination of hemisphere and specular sampling BRDF's.
-- Global illumination thanks to using path tracing instead of ray tracing.
+- Global illumination and soft shadows thanks to using path tracing instead of ray tracing.
 
 ## Examples
 
