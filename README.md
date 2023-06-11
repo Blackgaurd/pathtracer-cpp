@@ -1,14 +1,38 @@
 # Path Tracer
 
-Path tracing algorithm implemented in C++ that supports rendering on the CPU and GPU using OpenGL. Uses BVH built with SAH as an acceleration structure.
+Implementation of the path tracing algorithm written in C++ and GLSL. Here are some of its features:
+
+- Supports single threaded rendering on the CPU or concurrent rendering on the GPU using OpenGL.
+  - GPU rendering is chunked into smaller jobs to avoid hogging the GPU from the OS.
+- Positionable camera using a position/forward vector system.
+- Proof of concept realtime rendering using SFML (only works on Linux).
+- Logarithmic time ray-triangle intersections by using a bounding volume hierarchy (BVH) built with the surface area heuristic.
+  - The BVH is implemented with neither recursion nor pointers to be compatible with GLSL. Rather, it uses a stack in place of recursion and an array to store nodes.
+- Support for various materials:
+  - Emitting/light materials of variable brightness and colour.
+  - Lambertian diffuse or matte surfaces using random hemisphere sampling BRDF.
+  - Specular diffuse or mirror surfaces of variable roughness using a combination of hemisphere and specular sampling BRDF's.
+- Global illumination thanks to using path tracing instead of ray tracing.
 
 ## Examples
 
-Cornell box rendered at 10,000 spp. Resolution: 1024x1024, time: 112 seconds (~50 billion rays).
+Standard Cornell Box.
+
+- SPP (samples per pixel): 10,000.
+- Ray depth: 5.
+- Triangles in scene: 30.
+- Resolution: 1024x1024.
+- Completion time: 112 seconds on GPU (~50 billion rays).
 
 ![box](examples/cornell_box.png)
 
-Cornell box-esque scene with specular reflection walls of increasing roughness, rendered at 10,000 spp. Resolution: 1024x1024, time: 230 seconds (~50 billion rays).
+Cornell box-esque scene with specular reflection walls of increasing roughness.
+
+- SPP: 10,000.
+- Ray depth: 5.
+- Triangles in scene: 32.
+- Resolution: 1024x1024.
+- Average completion time: 230 seconds on GPU (~50 billion rays).
 
 ![box0](examples/mod0.png)
 ![box0.05](examples/mod0.05.png)
@@ -17,11 +41,7 @@ Cornell box-esque scene with specular reflection walls of increasing roughness, 
 ![box0.5](examples/mod0.5.png)
 ![box0.8](examples/mod0.8.png)
 
-## CPU vs GPU Rendering
-
-CPU rendering runs on a single thread. GPU rendering is done in "chunks" of rectangles to split up the rendering task to smaller jobs as to not block the GPU. The speed increase from rendering on GPU can vary drastically depending on the scene, render settings, and hardware.
-
-## Building
+## Running
 
 This project uses [Bazel](https://bazel.build/install) for building. To build any of the examples:
 
