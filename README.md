@@ -1,5 +1,9 @@
 # Path Tracer
 
+Path tracing is an algorithm which builds on the ray tracing algorithm to accurately render objects and scenes involving lights, reflections, shadows, and different types of materials. This is done my simulating the true physics of light, rather than simply approximating it as ray tracing would do. Thus, it yields much more realistic images at the cost of performance. Rather than simulating a single light ray per pixel, path tracing simulates thousands of them bouncing "randomly" off surfaces to achieve details that would otherwise be much more difficult with ray tracing, such as soft shadows, anti-aliasing, and color bleeding.
+
+## Project details
+
 Implementation of the path tracing algorithm written in C++ and GLSL. Here are some of its features:
 
 - Supports single threaded rendering on the CPU or concurrent rendering on the GPU using OpenGL.
